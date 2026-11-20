@@ -1,9 +1,9 @@
 import {Entity, CreateDateColumn, Column, PrimaryGeneratedColumn, UpdateDateColumn, DeleteDateColumn } from 'typeorm';
 
 export enum EquipmentStatus {
-    Ok = 'Ok',
-    Broken = 'Broken',
-    Repairing = 'Repairing',
+    OK = 'OK',
+    BROKEN = 'BROKEN',
+    REPAIRING = 'REPAIRING',
 }
 
 @Entity('equipments')
@@ -22,7 +22,7 @@ export class Equipment
     @Column({type: 'int'})
     availableQty: number;
 
-    @Column({ type: 'enum', enum: EquipmentStatus, default: EquipmentStatus.Ok })
+    @Column({ type: 'enum', enum: EquipmentStatus, default: EquipmentStatus.OK })
     status: EquipmentStatus;
 
     @CreateDateColumn()

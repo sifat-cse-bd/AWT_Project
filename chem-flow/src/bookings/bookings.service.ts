@@ -21,22 +21,21 @@ export class BookingsService {
     ) {}
 
     async create(dto: CreateBookingDto) {
-        const schedule = this.validateSchedule(dto.startAt, dto.endAt);
-
+        const { startAt, endAt } = this.validateSchedule(dto.startAt, dto.endAt);
         const requester = await this.usersRepo.findOne({
-            where: { userId: dto.requesterUserId },
+            where: { userId: dto.requesterUserId, isActive: true },
         });
 
         if (!requester) {
-            throw new Error(`User ${dto.requesterUserId} not found`);
+            throw new NotFoundException(`Active user ${dto.requesterUserId} not found`);
         }
 
         const booking = await this.bookingsRepo.save(this.bookingsRepo.create({
             requester,
-
-            startAt: dto.startAt as any,
-            endAt: dto.endAt as any,
+            startAt,
+            endAt,
             purpose: dto.purpose,
+            status: BookingStatus.PENDING,
         }));
 
         return {
@@ -46,8 +45,8 @@ export class BookingsService {
     }
 
     async findAll() {
-
         const bookings = await this.bookingsRepo.find({
+            relations: { requester: true },
             order: { startAt: 'ASC' },
         });
 
@@ -59,7 +58,6 @@ export class BookingsService {
     }
 
     async findOne(id: number) {
-
         const booking = await this.findBooking(id);
 
         return {
@@ -70,12 +68,12 @@ export class BookingsService {
 
     async update(id: number, dto: UpdateBookingDto) {
         const booking = await this.findBooking(id);
+        this.ensurePending(booking);
 
         if (dto.startAt !== undefined || dto.endAt !== undefined) {
-
             const schedule = this.validateSchedule(
-                dto.startAt as string,
-                dto.endAt as string,
+                dto.startAt ?? booking.startAt.toISOString(),
+                dto.endAt ?? booking.endAt.toISOString(),
             );
             booking.startAt = schedule.startAt;
             booking.endAt = schedule.endAt;
@@ -94,7 +92,7 @@ export class BookingsService {
 
     async cancel(id: number) {
         const booking = await this.findBooking(id);
-
+        this.ensurePending(booking);
         booking.status = BookingStatus.CANCELLED;
 
         const cancelledBooking = await this.bookingsRepo.save(booking);
@@ -105,16 +103,57 @@ export class BookingsService {
     }
 
     private async findBooking(id: number) {
-       
+        const booking = await this.bookingsRepo.findOne({
+            where: { id },
+            relations: { requester: true },
+        });
+
+        if (!booking) {
+            throw new NotFoundException(`Booking ${id} not found`);
+        }
+
+        return booking;
     }
 
-    private validateSchedule() {
+    private validateSchedule(startAtValue: string, endAtValue: string) {
+        const startAt = new Date(startAtValue);
+        const endAt = new Date(endAtValue);
+
+        if (Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime())) {
+            throw new BadRequestException('Booking dates must be valid');
+        }
+
+        if (startAt <= new Date()) {
+            throw new BadRequestException('Booking start time must be in the future');
+        }
+
+        if (endAt <= startAt) {
+            throw new BadRequestException('Booking end time must be after the start time');
+        }
+
+        return { startAt, endAt };
     }
 
     private ensurePending(booking: Booking) {
-        if (booking.status === BookingStatus.PENDING) {
-            throw new ConflictException('Pending bookings cannot be changed');
+        if (booking.status !== BookingStatus.PENDING) {
+            throw new ConflictException('Only pending bookings can be changed or cancelled');
         }
     }
 
+    private toResponse(booking: Booking) {
+        return {
+            id: booking.id,
+            requester: {
+                userId: booking.requester.userId,
+                name: booking.requester.name,
+                email: booking.requester.email,
+            },
+            startAt: booking.startAt,
+            endAt: booking.endAt,
+            purpose: booking.purpose,
+            status: booking.status,
+            createdAt: booking.createdAt,
+            updatedAt: booking.updatedAt,
+        };
+    }
 }

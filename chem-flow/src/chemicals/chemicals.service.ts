@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Chemical } from './entities/chemical.entity.js';
 import { Repository } from 'typeorm';
 import { CreateChemicalDto } from './dtos/create-chemical.dto.js';
+import { UpdateChemicalDto } from './dtos/update-chemical.dto.js';
 
 @Injectable()
 export class ChemicalsService {
@@ -51,8 +52,14 @@ export class ChemicalsService {
             where:{id:id},
             select:{id:true, name:true, currentQty:true, unit:true, hazardLevel:true}
         });
-        if(chemical===null){throw new NotFoundException(`Chemical with ID: ${id} not found`);}
+        if(chemical===null){throw new NotFoundException(`Chemical with ID: ${id} not found`);} //404
         return chemical;
+    }
 
+    //update
+    async updateChemical(id:number, dto:UpdateChemicalDto):Promise<UpdateChemicalDto>{
+        const chemical= await this.ChemicalRepo.update(id,dto);
+        if(!chemical.affected){ throw new NotFoundException(`Chemical with ID: ${id} not found`)}
+        return this.getChemicalById(id); //return updated values
     }
 }

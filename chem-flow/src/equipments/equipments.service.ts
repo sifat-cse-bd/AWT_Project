@@ -25,16 +25,71 @@ export class EquipmentsService
 
   async GetAllEquipments(): Promise<Equipment[]>
   {
-    return await this.equipmentRepo.find();
+    try
+    {
+      const equipments = await this.equipmentRepo.find
+      (
+        {
+          select:
+          {
+            id: true,
+            name: true,
+            totalQty: true,
+            availableQty: true,
+            status: true,
+            createdAt: true,
+          },
+          order: {createdAt: 'DESC'},
+        }
+
+      );
+
+      if (equipments.length === 0)
+      {
+        throw new NotFoundException('No equipments found.');
+      }
+
+      return equipments;
+        
+      
+    }
+    catch (error)
+    {
+      throw error;
+    }
   }
 
-  async GetEquipmentById(id: number): Promise<Equipment>
+  async GetEquipmentById(id: number)
   {
-    const equipment = await this.equipmentRepo.findOneBy({ id });
-    if (!equipment) {
-      throw new NotFoundException('Equipment not found.');
+    try
+    {
+       const equipment = await this.equipmentRepo.findOne
+       (
+        { 
+          where: { id },
+          select:
+          {
+            id: true,
+            name: true,
+            totalQty: true,
+            availableQty: true,
+            status: true,
+            createdAt: true,
+          }
+        }
+
+       );
+      if (!equipment) 
+        {
+          throw new NotFoundException('Equipment not found.');
+        }
+        return equipment;
     }
-    return equipment;
+    catch (error)
+    {
+      throw error;
+    }
+    
   }
 
   async UpdateEquipment(id: number, updateEQP: UpdateEquipmentDto): Promise<Equipment>

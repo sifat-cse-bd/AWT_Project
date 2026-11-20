@@ -4,6 +4,7 @@ import { Chemical } from './entities/chemical.entity.js';
 import { Repository } from 'typeorm';
 import { CreateChemicalDto } from './dtos/create-chemical.dto.js';
 import { UpdateChemicalDto } from './dtos/update-chemical.dto.js';
+import { ResponseDto } from './dtos/response.dto.js';
 
 @Injectable()
 export class ChemicalsService {
@@ -61,5 +62,12 @@ export class ChemicalsService {
         const chemical= await this.ChemicalRepo.update(id,dto);
         if(!chemical.affected){ throw new NotFoundException(`Chemical with ID: ${id} not found`)}
         return this.getChemicalById(id); //return updated values
+    }
+
+    //delete (always soft delete for compliance and logs)
+    async softDeleteChemical(id:number):Promise<ResponseDto>{
+        const chemical= await this.ChemicalRepo.softDelete(id);
+        if(!chemical.affected){throw new NotFoundException(`Chemical with ID: ${id} not found`);}
+        return {message: `Chemical with ID:${id} has been removed`}
     }
 }

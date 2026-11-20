@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsDateString, IsEnum, IsNotEmpty, IsNumber, IsString, Min } from "class-validator";
+import { IsDateString, IsEnum, IsNotEmpty, IsNumber, IsString, Matches, Min } from "class-validator";
 import{Type} from 'class-transformer';
 
 export enum HazardLevel{
@@ -16,7 +16,7 @@ export class CreateChemicalDto{
     @Type(()=>Number)
     @IsNotEmpty()
     @ApiProperty({
-        description:'Unique chemical ID'
+        description:'Unique chemical ID',
     })
     id:number;
 
@@ -65,8 +65,9 @@ export class CreateChemicalDto{
     @IsNotEmpty({message:'Please specify expiry date for compliance'})
     @ApiProperty({
         description:'Expiry Date (Date Only Format: YYYY-MM-DD)',
-        //date only format year-month-date
+        format:'date',
         example:'2027-11-28'
     })
-    expiryDate:Date;
+    @Matches(/^\d{4}-\d{2}-\d{2}$/, {message:'Expiry date must follow YYYY-MM-DD format'})
+    expiryDate:string;
 }

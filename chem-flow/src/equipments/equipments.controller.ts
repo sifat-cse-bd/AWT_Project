@@ -3,6 +3,7 @@ import { EquipmentsService } from './equipments.service.js';
 import { CreateEquipmentDto } from './dto/create-equipment.dto.js';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto.js';
 import {ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
+import { EquipmentStatus } from './entities/equipment.entity.js';
 
 @ApiTags('equipments')
 @Controller('equipments')
@@ -34,6 +35,15 @@ export class EquipmentsController
   findOneEQP(@Param('id', ParseIntPipe) id: number) 
   {
     return this.equipmentsService.GetEquipmentById(id);
+  }
+
+  @ApiOperation({ summary: 'Get equipments by status', description: 'Retrieves a list of equipments filtered by their status.' })
+  @ApiResponse({ status: 200, description: 'List of equipments with the specified status retrieved successfully.' })
+  @ApiResponse({ status: 404, description: 'No equipments found with the specified status.' })
+  @Get('status/:status')
+  findByStatus(@Param('status') status: EquipmentStatus) 
+  {
+    return this.equipmentsService.FindByStatus(status);
   }
 
   @ApiOperation({ summary: 'Update equipment details', description: 'Updates specific fields of an existing equipment by ID.' })

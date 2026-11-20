@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { CreateEquipmentDto } from './dto/create-equipment.dto.js';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto.js';
 import { Equipment } from './entities/equipment.entity.js';
+import { EquipmentStatus } from './entities/equipment.entity.js';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -90,6 +91,16 @@ export class EquipmentsService
       throw error;
     }
     
+  }
+
+  async FindByStatus(status: EquipmentStatus): Promise<Equipment[]>
+  {
+    const equipments = await this.equipmentRepo.find({ where: { status } });
+    if (!equipments || equipments.length === 0)
+      {
+        throw new NotFoundException(`No equipments found with status: ${status}`);
+      }
+    return equipments;
   }
 
   async UpdateEquipment(id: number, updateEQP: UpdateEquipmentDto): Promise<Equipment>

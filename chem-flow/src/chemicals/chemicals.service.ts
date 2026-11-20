@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Chemical } from './entities/chemical.entity.js';
-import { Repository } from 'typeorm';
+import { Raw, Repository } from 'typeorm';
 import { CreateChemicalDto } from './dtos/create-chemical.dto.js';
 import { UpdateChemicalDto } from './dtos/update-chemical.dto.js';
 import { ResponseDto } from './dtos/response.dto.js';
@@ -69,5 +69,15 @@ export class ChemicalsService {
         const chemical= await this.ChemicalRepo.softDelete(id);
         if(!chemical.affected){throw new NotFoundException(`Chemical with ID: ${id} not found`);}
         return {message: `Chemical with ID:${id} has been removed`}
+    }
+
+    //get all chemicals with low stock 
+    async getLowStockList():Promise<CreateChemicalDto[]>{
+        return this.ChemicalRepo
+        .createQueryBuilder('chemical')
+        .select(['chemical.id', 'chemical.name','chemical.currentQty', 'chemical.unit','chemical.hazardLevel'])
+        .where('chemical.currentQty <=chemical.minStockQty')
+        .orderBy('chemical.currentQty','ASC') //so chemicals requiring immediate restocking is at top of results
+        .getMany();
     }
 }

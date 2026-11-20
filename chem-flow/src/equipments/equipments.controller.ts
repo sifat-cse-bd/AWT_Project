@@ -28,6 +28,24 @@ export class EquipmentsController
     return this.equipmentsService.GetAllEquipments();
   }
 
+  @ApiOperation({ summary: 'Get equipments by status', description: 'Retrieves a list of equipments filtered by their status.' })
+  @ApiResponse({ status: 200, description: 'List of equipments with the specified status retrieved successfully.' })
+  @ApiResponse({ status: 404, description: 'No equipments found with the specified status.' })
+  @Get('status/:status')
+  findByStatus(@Param('status') status: EquipmentStatus) 
+  {
+    return this.equipmentsService.FindByStatus(status);
+  }
+
+  @ApiOperation({ summary: 'Check equipment availability', description: 'Checks if an equipment is available for a requested quantity.' })
+  @ApiResponse({ status: 200, description: 'Availability information retrieved successfully.' })
+  @Get('availability/:id/:requestedQTY')
+  checkAvailability(@Param('id', ParseIntPipe) id: number, @Param('requestedQTY', ParseIntPipe) requestedQTY: number) 
+  {
+    return this.equipmentsService.CheckEQPAvailability(id, requestedQTY);
+  }
+  
+
   @ApiOperation({ summary: 'Get an equipment by ID', description: 'Retrieval of a specific equipment using its unique ID.' })
   @ApiResponse({ status: 200, description: 'Equipment found successfully.' })
   @ApiResponse({ status: 404, description: 'Equipment not found.' })
@@ -37,14 +55,6 @@ export class EquipmentsController
     return this.equipmentsService.GetEquipmentById(id);
   }
 
-  @ApiOperation({ summary: 'Get equipments by status', description: 'Retrieves a list of equipments filtered by their status.' })
-  @ApiResponse({ status: 200, description: 'List of equipments with the specified status retrieved successfully.' })
-  @ApiResponse({ status: 404, description: 'No equipments found with the specified status.' })
-  @Get('status/:status')
-  findByStatus(@Param('status') status: EquipmentStatus) 
-  {
-    return this.equipmentsService.FindByStatus(status);
-  }
 
   @ApiOperation({ summary: 'Update equipment details', description: 'Updates specific fields of an existing equipment by ID.' })
   @ApiResponse({ status: 200, description: 'Equipment updated successfully.' })
@@ -63,4 +73,7 @@ export class EquipmentsController
   {
     return this.equipmentsService.DeleteEquipment(id);
   }
+
+  
+
 }

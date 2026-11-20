@@ -118,6 +118,22 @@ export class EquipmentsService
     return await this.equipmentRepo.save(equipment);
   }
 
+
+  async CheckEQPAvailability(id: number, requestedQTY: number)
+  {
+    const equipment = await this.GetEquipmentById(id);
+
+    if(equipment.status === EquipmentStatus.OK && equipment.availableQty >= requestedQTY)
+      {
+        return `Equipment with ID ${id} is available for the requested quantity of ${requestedQTY}.`;
+      }
+    if(requestedQTY < 1)
+      {
+        throw new BadRequestException('Requested quantity must be at least 1.');
+      }  
+    return `Equipment with ID ${id} is not available for now.`;
+  }
+
   async DeleteEquipment (id: number): Promise<string>
     {
       const equipment = await this.GetEquipmentById(id);

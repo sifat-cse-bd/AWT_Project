@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Chemical } from './entities/chemical.entity.js';
 import { Repository } from 'typeorm';
@@ -28,5 +28,20 @@ export class ChemicalsService {
             //for any other ones: //500 
             throw new InternalServerErrorException('Internal server error'); 
         }
+    }
+
+    //read list
+    async getChemicalsList():Promise<CreateChemicalDto[]>{
+        const list= await this.ChemicalRepo.find({
+            select:{
+                id:true,
+                name:true,
+                currentQty:true,
+                unit:true,
+                hazardLevel:true
+            }
+        })
+        if(list.length===0){throw new NotFoundException('List is empty')}//404
+        return list;
     }
 }

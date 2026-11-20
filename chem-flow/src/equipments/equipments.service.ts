@@ -1,8 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { CreateEquipmentDto } from './dto/create-equipment.dto.js';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto.js';
-import { Equipment } from './entities/equipment.entity.js';
-import { EquipmentStatus } from './entities/equipment.entity.js';
+import { Equipment, EquipmentStatus } from './entities/equipment.entity.js';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -117,6 +116,22 @@ export class EquipmentsService
 
     Object.assign(equipment, updateEQP);
     return await this.equipmentRepo.save(equipment);
+  }
+
+
+  async CheckEQPAvailability(id: number, requestedQTY: number)
+  {
+    const equipment = await this.GetEquipmentById(id);
+
+    if(equipment.status === EquipmentStatus.OK && equipment.availableQty >= requestedQTY)
+      {
+        return `Equipment with ID ${id} is available for the requested quantity of ${requestedQTY}.`;
+      }
+    if(requestedQTY < 1)
+      {
+        throw new BadRequestException('Requested quantity must be at least 1.');
+      }  
+    return `Equipment with ID ${id} is not available for now.`;
   }
 
   async DeleteEquipment (id: number): Promise<string>

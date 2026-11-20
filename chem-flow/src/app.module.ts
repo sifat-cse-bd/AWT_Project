@@ -21,7 +21,7 @@ import { config } from 'process';
     ConfigModule.forRoot({ isGlobal: true }),
 
     // 2. TypeORM data take from .env
-    TypeOrmModule.forRootAsync({
+    TypeOrmModule.forRootAsync({ 
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: ((configService: ConfigService) => ({

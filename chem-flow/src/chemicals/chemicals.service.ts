@@ -44,4 +44,15 @@ export class ChemicalsService {
         if(list.length===0){throw new NotFoundException('List is empty')}//404
         return list;
     }
+
+    //read one
+    async getChemicalById(id:number):Promise<CreateChemicalDto>{
+        const chemical= await this.ChemicalRepo.findOne({
+            where:{id:id},
+            select:{id:true, name:true, currentQty:true, unit:true, hazardLevel:true}
+        });
+        if(chemical===null){throw new NotFoundException(`Chemical with ID: ${id} not found`);}
+        return chemical;
+
+    }
 }

@@ -37,4 +37,9 @@ export class ChemicalsController {
   async getLowStockList():Promise<CreateChemicalDto[]>{
     return await this.chemicalsService.getLowStockList();
   }
+
+  @Post('deduct/:id/:amount')
+  async deductChemicalQty(@Param('id',ParseIntPipe) id:number, @Param('amount',ParseIntPipe) amount:number):Promise<CreateChemicalDto>{
+    return await this.chemicalsService.deductChemicalQty(id,amount);
+  }
 }

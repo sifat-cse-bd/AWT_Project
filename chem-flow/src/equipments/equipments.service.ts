@@ -1,8 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { CreateEquipmentDto } from './dto/create-equipment.dto.js';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto.js';
-import { Equipment } from './entities/equipment.entity.js';
-import { EquipmentStatus } from './entities/equipment.entity.js';
+import { Equipment, EquipmentStatus } from './entities/equipment.entity.js';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 

@@ -80,4 +80,20 @@ export class ChemicalsService {
         .orderBy('chemical.currentQty','ASC') //so chemicals requiring immediate restocking is at top of results
         .getMany();
     }
+
+    //deduct used chemical amount (future iteration:trigger mailtrap alert if stock not available, for now just throw excep.)
+    async deductChemicalQty(id:number, amount:number):Promise<CreateChemicalDto>{
+        if(amount<=0){throw new BadRequestException('Amount must be a positive value.');}
+        const chemical= await this.getChemicalById(id);
+        const updated = await this.ChemicalRepo
+            .createQueryBuilder()
+            .update(Chemical)
+            .set({currentQty:()=>`"currentQty"-:amount`})
+            .where('id=:id',{id}) //parameterization
+            .andWhere('"currentQty">=:amount',{amount})
+            .execute();
+
+            if(!updated.affected){throw new BadRequestException('Enough stock not available for allocation. Restock.');}
+            return chemical;
+    }
 }

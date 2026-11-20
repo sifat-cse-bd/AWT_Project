@@ -13,7 +13,7 @@ export class ChemicalsService {
     //create, read (list, by id), update, delete & correct HTTP status codes
 
     //create
-    async createChemical(dto:CreateChemicalDto):Promise<Chemical>{
+    async createChemical(dto:CreateChemicalDto):Promise<CreateChemicalDto>{
         //toLocaleDateString('en-CA') gives YYYY-MM-DD format of Canada
         const currentDate= new Date().toLocaleDateString('en-CA');
 

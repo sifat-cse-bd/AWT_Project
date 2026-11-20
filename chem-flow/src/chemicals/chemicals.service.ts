@@ -1,8 +1,10 @@
-import { BadRequestException, ConflictException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Chemical } from './entities/chemical.entity.js';
 import { Repository } from 'typeorm';
 import { CreateChemicalDto } from './dtos/create-chemical.dto.js';
+import { UpdateChemicalDto } from './dtos/update-chemical.dto.js';
+import { ResponseDto } from './dtos/response.dto.js';
 
 @Injectable()
 export class ChemicalsService {
@@ -28,5 +30,44 @@ export class ChemicalsService {
             //for any other ones: //500 
             throw new InternalServerErrorException('Internal server error'); 
         }
+    }
+
+    //read list
+    async getChemicalsList():Promise<CreateChemicalDto[]>{
+        const list= await this.ChemicalRepo.find({
+            select:{
+                id:true,
+                name:true,
+                currentQty:true,
+                unit:true,
+                hazardLevel:true
+            }
+        })
+        if(list.length===0){throw new NotFoundException('List is empty')}//404
+        return list;
+    }
+
+    //read one
+    async getChemicalById(id:number):Promise<CreateChemicalDto>{
+        const chemical= await this.ChemicalRepo.findOne({
+            where:{id:id},
+            select:{id:true, name:true, currentQty:true, unit:true, hazardLevel:true}
+        });
+        if(chemical===null){throw new NotFoundException(`Chemical with ID: ${id} not found`);} //404
+        return chemical;
+    }
+
+    //update
+    async updateChemical(id:number, dto:UpdateChemicalDto):Promise<UpdateChemicalDto>{
+        const chemical= await this.ChemicalRepo.update(id,dto);
+        if(!chemical.affected){ throw new NotFoundException(`Chemical with ID: ${id} not found`)}
+        return this.getChemicalById(id); //return updated values
+    }
+
+    //delete (always soft delete for compliance and logs)
+    async softDeleteChemical(id:number):Promise<ResponseDto>{
+        const chemical= await this.ChemicalRepo.softDelete(id);
+        if(!chemical.affected){throw new NotFoundException(`Chemical with ID: ${id} not found`);}
+        return {message: `Chemical with ID:${id} has been removed`}
     }
 }

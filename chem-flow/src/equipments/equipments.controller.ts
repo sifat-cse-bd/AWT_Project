@@ -50,6 +50,14 @@ export class EquipmentsController
     return this.equipmentsService.CheckEQPAvailability(id, requestedQTY);
   }
   
+  @ApiOperation({ summary: 'Search equipments by name', description: 'Students may search equipments by name for booking purposes.' })
+  @ApiResponse({ status: 200, description: 'Equipments matching the search criteria retrieved successfully.' })
+  @Roles('ADMIN', RegisterableUserRole.MANAGER, RegisterableUserRole.LAB_ASSISTANT, RegisterableUserRole.STUDENT)
+  @Get('search/:name')
+  searchEquipments(@Param('name') name: string) 
+  {
+    return this.equipmentsService.SearchEquipmentsByName(name);
+  }
 
   @ApiOperation({ summary: 'Get an equipment by ID', description: 'Only administrators, managers and lab assistants can retrieve equipment details.' })
   @ApiResponse({ status: 200, description: 'Equipment found successfully.' })

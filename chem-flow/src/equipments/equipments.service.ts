@@ -4,6 +4,7 @@ import { UpdateEquipmentDto } from './dto/update-equipment.dto.js';
 import { Equipment } from './entities/equipment.entity.js';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
+import { UsersService } from '../users/users.service.js';
 
 @Injectable()
 export class EquipmentsService 
@@ -11,6 +12,7 @@ export class EquipmentsService
   constructor(
     @InjectRepository(Equipment)
     private readonly equipmentRepo: Repository<Equipment>,
+    private readonly usersService: UsersService
   ) {}
 
   async CreateEquipment(CreateEQP: CreateEquipmentDto): Promise<Equipment>

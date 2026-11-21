@@ -22,5 +22,9 @@ export class CreateEquipmentDto {
   @Min(0, {message: 'Available quantity should be a non-negative number.'})
   availability: number;
 
+  @ApiProperty({ example: 'Enter Lab Assistant ID' })
+  @IsString({message: 'Lab Assistant ID must be a valid string.'})
+  @IsNotEmpty({message: 'Lab Assistant ID cannot be empty.'})
+  userId: string;
 
 }

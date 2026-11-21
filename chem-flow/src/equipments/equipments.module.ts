@@ -3,8 +3,9 @@ import { EquipmentsService } from './equipments.service.js';
 import { EquipmentsController } from './equipments.controller.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Equipment } from './entities/equipment.entity.js'; 
+import {UsersModule} from '../users/users.module.js';
 @Module({
-  imports: [TypeOrmModule.forFeature([Equipment])],
+  imports: [TypeOrmModule.forFeature([Equipment]), UsersModule],
   controllers: [EquipmentsController],
   providers: [EquipmentsService],
 })

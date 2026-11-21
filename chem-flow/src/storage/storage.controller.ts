@@ -9,7 +9,9 @@ import { Roles } from '../auth/decorators/roles.decorator.js';
 import { RegisterableUserRole } from '../users/dto/create-user.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth()
 @Controller('storage')
 export class StorageController {
   constructor(private readonly storageService: StorageService) {}

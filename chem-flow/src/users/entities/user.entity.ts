@@ -4,6 +4,8 @@ import { RegisterableUserRole as UserRole } from '../dto/create-user.dto.js';
 export { RegisterableUserRole as UserRole } from '../dto/create-user.dto.js';
 import { Admin } from '../../admin/entities/admin.entity.js';
 import { Membership } from '../../groups/entities/membership.entity.js';
+import { Equipment } from '../../equipments/entities/equipment.entity.js';
+
 
 @Entity('users')
 export class User {
@@ -47,5 +49,8 @@ export class User {
 
     @OneToMany(() => Membership, (membership) => membership.user)
     memberships?: Relation<Membership[]>;
+
+    @OneToMany(() => Equipment, (equipment) => equipment.labAssistant)
+    equipments: Equipment[];
 }
 

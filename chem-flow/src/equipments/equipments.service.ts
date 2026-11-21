@@ -4,6 +4,8 @@ import { UpdateEquipmentDto } from './dto/update-equipment.dto.js';
 import { Equipment } from './entities/equipment.entity.js';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
+import { UsersService } from '../users/users.service.js';
+import { RegisterableUserRole } from '../users/dto/create-user.dto.js';
 
 @Injectable()
 export class EquipmentsService 
@@ -11,15 +13,28 @@ export class EquipmentsService
   constructor(
     @InjectRepository(Equipment)
     private readonly equipmentRepo: Repository<Equipment>,
+    private readonly usersService: UsersService
   ) {}
 
   async CreateEquipment(CreateEQP: CreateEquipmentDto): Promise<Equipment>
   {
+    const userEQP = await this.usersService.findByUserId(CreateEQP.userId);
+    if(!userEQP)
+      {
+        throw new NotFoundException('User not found or inactive.');
+      }
+
+    if(userEQP.role !== RegisterableUserRole.LAB_ASSISTANT)
+      {
+        throw new BadRequestException('Only lab assistants can assigend as equipment observers.');
+      }
+
     if (CreateEQP.availability > CreateEQP.totalQty) 
       {
         throw new BadRequestException('Available Quantity cannot exceed Total Quantity.');
       }
     const newEquipment = this.equipmentRepo.create(CreateEQP);
+    newEquipment.labAssistant = userEQP;
     return await this.equipmentRepo.save(newEquipment);
   }
 
@@ -102,6 +117,20 @@ export class EquipmentsService
     if(availability > totalQty)
       {
         throw new BadRequestException('Available Quantity cannot exceed Total Quantity.');
+      }
+
+    if(updateEQP.userId !== undefined)
+      {
+        const userEQP = await this.usersService.findByUserId(updateEQP.userId);
+        if(!userEQP)
+          {
+            throw new NotFoundException('User not found or inactive.');
+          }
+        if(userEQP.role !== RegisterableUserRole.LAB_ASSISTANT)
+          {
+            throw new BadRequestException('Only lab assistants can be assigned as equipment observers.');
+          }
+        equipment.labAssistant = userEQP;
       }
 
     Object.assign(equipment, updateEQP);

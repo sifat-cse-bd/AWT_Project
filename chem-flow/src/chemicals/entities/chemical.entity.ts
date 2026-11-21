@@ -1,4 +1,6 @@
-import { Column, Entity, PrimaryColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from "typeorm";
+import type { Relation } from 'typeorm';
+import { Booking } from '../../bookings/entities/booking.entity.js';
 import { HazardLevel } from "../dtos/create-chemical.dto.js";
 
  
@@ -25,4 +27,8 @@ import { HazardLevel } from "../dtos/create-chemical.dto.js";
 
     @Column({type:'date'})
     expiryDate:string;
+
+    @ManyToOne(() => Booking, { nullable: true, onDelete: 'SET NULL' })
+    @JoinColumn({ name: 'bookingId', referencedColumnName: 'bookingId' })
+    booking?: Relation<Booking> | null;
  }

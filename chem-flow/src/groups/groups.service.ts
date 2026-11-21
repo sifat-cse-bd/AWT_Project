@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, Like, Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity.js';
 import { Group } from './entities/group.entity.js';
 import { Membership } from './entities/membership.entity.js';

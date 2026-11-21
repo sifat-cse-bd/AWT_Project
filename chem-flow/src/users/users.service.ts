@@ -1,10 +1,13 @@
-import { Injectable, NotFoundException, ConflictException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, InternalServerErrorException, BadRequestException, HttpException, ServiceUnavailableException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { User } from './entities/user.entity.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
-import * as bcrypt from  'bcrypt';
+import * as bcrypt from 'bcrypt';
+import { Admin } from 'typeorm/driver/mongodb/typings.js';
+import { ConfigService } from '@nestjs/config';
+
 
 
 @Injectable()
@@ -12,14 +15,49 @@ export class UsersService {
     constructor(
         @InjectRepository(User)
         private usersRepo: Repository<User>,
+        @InjectRepository(Admin)
+        private adminsRepo: Repository<Admin>,
+        private readonly configService: ConfigService,
     ) { }
+
+    private async generateUserId(role: CreateUserDto['role']): Promise<string> {
+        try {
+            const prefixes: Record<CreateUserDto['role'], string> = {
+                STUDENT: 'STD',
+                MANAGER: 'MNG',
+                LAB_ASSISTANT: 'LAS',
+            };
+            const prefix = prefixes[role];
+
+            const users = await this.usersRepo.find({
+                where: { userId: Like(`${prefix}-%`) },
+                withDeleted: true,
+                select: { userId: true },
+            });
+
+            let nextNumber = 1;
+            for (const user of users) {
+                const match = /^([A-Z]+)-(\d+)$/.exec(user.userId);
+                if (match?.[1] === prefix) {
+                    nextNumber = Math.max(nextNumber, Number(match[2]) + 1);
+                }
+            }
+
+            return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Failed to generate user ID');
+        }
+    }
 
     //FOR AUTH-----------------------------------
     async findByEmailForAuth(email: string) {
         return this.usersRepo.findOne({
-            where: { email, isActive:true},
+            where: { email, isActive: true },
             select: {
-                id:true,
+                id: true,
                 userId: true,
                 email: true,
                 passwordHash: true,
@@ -30,6 +68,7 @@ export class UsersService {
     }
     //-------------------------------------------
 
+
     async create(dto: CreateUserDto) {
         try {
             const existingUser = await this.usersRepo.findOne({ where: { email: dto.email } });
@@ -38,27 +77,34 @@ export class UsersService {
                 throw new ConflictException('Email already exists');
             }
 
-            //will be implement bcrypt for pass hashing
-            let hashedPass = await bcrypt.hash(dto.password,12); //ecryp key length 12
+            // pass hashing
+            let hashedPass = await bcrypt.hash(dto.password, 12); //ecryp key length 12
+            const userId = await this.generateUserId(dto.role);
+            const adminEmail = this.configService.get<string>('ADMIN_EMAIL');
+            const admin = adminEmail
+                ? await this.adminsRepo.findOne({ where: { email: adminEmail } })
+                : null;
+            if (!admin) {
+                throw new ServiceUnavailableException('The environment-configured admin account is not initialized');
+            }
 
             const user = this.usersRepo.create({
-                userId: dto.userId,
+                userId,
                 name: dto.name,
                 email: dto.email,
-                passwordHash: hashedPass, //will be use only hasshed password
+                passwordHash: hashedPass, 
                 role: dto.role,
                 isActive: dto.isActive,
+                admin,
             });
 
             const savedUser = await this.usersRepo.save(user);
 
             //delete hashpassword for : not return in the response
-            //
-            //
             const { passwordHash, ...userWithoutPass } = savedUser; //destructures to remove hashedpass
             return {
                 message: 'User created successfully',
-                data: userWithoutPass,
+                data: savedUser,
             };
         } catch (error) {
             throw error;

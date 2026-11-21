@@ -14,12 +14,13 @@ export class UsersService {
         private usersRepo: Repository<User>,
     ) { }
 
-    //FOR AUTH
+    //FOR AUTH-----------------------------------
     async findByEmailForAuth(email: string) {
         return this.usersRepo.findOne({
             where: { email },
             select: {
-                id: true,
+                id:true,
+                userId: true,
                 email: true,
                 passwordHash: true,
                 role: true,
@@ -27,6 +28,7 @@ export class UsersService {
             },
         });
     }
+    //-------------------------------------------
 
     async create(dto: CreateUserDto) {
         try {
@@ -40,6 +42,7 @@ export class UsersService {
             let hashedPass = await bcrypt.hash(dto.password,12); //ecryp key length 12
 
             const user = this.usersRepo.create({
+                userId: dto.userId,
                 name: dto.name,
                 email: dto.email,
                 passwordHash: hashedPass, //will be use only hasshed password
@@ -48,7 +51,6 @@ export class UsersService {
             });
 
             const savedUser = await this.usersRepo.save(user);
-
 
             //delete hashpassword for : not return in the response
             //

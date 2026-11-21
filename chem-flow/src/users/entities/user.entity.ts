@@ -1,9 +1,9 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, DeleteDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, DeleteDateColumn, ManyToOne, JoinColumn, OneToMany, RelationId } from 'typeorm';
+import type { Relation } from 'typeorm';
 
 export enum UserRole {
-    ADMIN = 'ADMIN',
     MANAGER = 'MANAGER',
-    TECHNICIAN = 'TECHNICIAN',
+    LAB_ASSISTANT = 'LAB_ASSISTANT',
     STUDENT = 'STUDENT',
 }
 
@@ -38,4 +38,7 @@ export class User {
 
     @DeleteDateColumn({ nullable: true })
     deletedAt: Date;
+
+    
+
 }

@@ -5,9 +5,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Admin } from '../admin/entities/admin.entity.js';
 import { Booking } from '../bookings/entities/booking.entity.js';
 import { Slot } from './entities/slot.entity.js';
-import { CreateSlotDto } from './dto/create-slot.dto.js'
+import { CreateSlotDto } from './dto/create-slot.dto.js';
 import { UpdateSlotDto } from './dto/update-slot.dto.js';
 
 @Injectable()
@@ -17,6 +18,8 @@ export class SlotsService {
     private readonly repo: Repository<Slot>,
     @InjectRepository(Booking)
     private readonly bookingsRepo: Repository<Booking>,
+    @InjectRepository(Admin)
+    private readonly adminsRepo: Repository<Admin>,
   ) {}
 
   async create(dto: CreateSlotDto) {
@@ -27,6 +30,9 @@ export class SlotsService {
 
     if (bookingId !== undefined && bookingId !== null) {
       slot.booking = await this.findBookingOrThrow(bookingId);
+    }
+    if (adminId !== undefined && adminId !== null) {
+      slot.admin = await this.findAdminOrThrow(adminId);
     }
 
     const savedSlot = await this.repo.save(slot);
@@ -62,8 +68,9 @@ export class SlotsService {
     if (bookingId !== undefined) {
       slot.booking = bookingId ? await this.findBookingOrThrow(bookingId) : null;
     }
-
-    
+    if (adminId !== undefined) {
+      slot.admin = adminId ? await this.findAdminOrThrow(adminId) : null;
+    }
 
     const updatedSlot = await this.repo.save(slot);
     return {
@@ -107,5 +114,29 @@ export class SlotsService {
     return booking;
   }
 
-  
+  private async findAdminOrThrow(adminId: string) {
+    const admin = await this.adminsRepo.findOne({ where: { adminId } });
+    if (!admin) {
+      throw new NotFoundException(`Admin ${adminId} not found`);
+    }
+    return admin;
+  }
+
+  private toResponse(slot: Slot) {
+    return {
+      id: slot.id,
+      startingTime: slot.startingTime,
+      endingTime: slot.endingTime,
+      day: slot.day,
+      date: slot.date,
+      maxCapacity: slot.maxCapacity,
+      countCapacity: slot.countCapacity,
+      status: slot.status,
+      bookingId: slot.booking?.bookingId ?? null,
+      adminId: slot.admin?.adminId ?? null,
+      createdAt: slot.createdAt,
+      updatedAt: slot.updatedAt,
+      deletedAt: slot.deletedAt,
+    };
+  }
 }

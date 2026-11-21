@@ -1,41 +1,63 @@
-import {Column,CreateDateColumn,Entity,JoinColumn,
-    ManyToOne,PrimaryGeneratedColumn,UpdateDateColumn,
+import {
+    Column,
+    CreateDateColumn,
+    Entity,
+    JoinColumn,
+    ManyToOne,
+    OneToMany,
+    OneToOne,
+    PrimaryGeneratedColumn,
+    RelationId,
+    UpdateDateColumn,
 } from 'typeorm';
+import type { Relation } from 'typeorm';
+import { Chemical } from '../../chemicals/entities/chemical.entity.js';
+import { Equipment } from '../../equipments/entities/equipment.entity.js';
+import { Group } from '../../groups/entities/group.entity.js';
+import { Slot } from '../../slots/entities/slot.entity.js';
 import { User } from '../../users/entities/user.entity.js';
-
-//used to define the possible status of bookings
-export enum BookingStatus {
-    PENDING = 'PENDING',
-    APPROVED = 'APPROVED',
-    REJECTED = 'REJECTED',
-    CANCELLED = 'CANCELLED',
-}
 
 @Entity('bookings')
 export class Booking {
     @PrimaryGeneratedColumn()
-    id: number;
-
-    //many to one relationship with the user entity
-    @ManyToOne(() => User, { nullable: false, onDelete: 'RESTRICT' })
-    @JoinColumn({ name: 'requester_id' }) //join user id as a booking id
-    requester: User;
-
-    @Column({ type: 'timestamptz' }) 
-    startAt: Date;
-
-    @Column({ type: 'timestamptz' })
-    endAt: Date;
+    bookingId: number;
 
     @Column({ type: 'varchar', length: 500 })
-    purpose: string;
+    title: string;
 
-    @Column({ type: 'enum', enum: BookingStatus, default: BookingStatus.PENDING })
-    status: BookingStatus;
+    @OneToOne(() => Group, (group) => group.booking, {
+        nullable: false,
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+    })
+    @JoinColumn({ name: 'groupName', referencedColumnName: 'name' })
+    group: Relation<Group>;
 
-    @CreateDateColumn() 
+    @RelationId((booking: Booking) => booking.group)
+    groupName: string;
+
+    @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+    @JoinColumn({ name: 'userId', referencedColumnName: 'userId' })
+    manager?: Relation<User> | null;
+
+    @RelationId((booking: Booking) => booking.manager)
+    userId?: string | null;
+
+    @CreateDateColumn({ type: 'timestamptz' })
     createdAt: Date;
 
-    @UpdateDateColumn()
+    @UpdateDateColumn({ type: 'timestamptz' })
     updatedAt: Date;
+
+    @Column({ type: 'timestamptz', nullable: true })
+    cancelAt?: Date | null;
+
+    @OneToMany(() => Slot, (slot) => slot.booking)
+    slots?: Relation<Slot[]>;
+
+    @OneToMany(() => Equipment, (equipment) => equipment.booking)
+    equipments?: Relation<Equipment[]>;
+
+    @OneToMany(() => Chemical, (chemical) => chemical.booking)
+    chemicals?: Relation<Chemical[]>;
 }

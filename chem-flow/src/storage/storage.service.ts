@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateStorageDto } from './dtos/create-storage.dto.js';
@@ -11,11 +11,20 @@ export class StorageService {
   constructor(
     @InjectRepository(Storage)
     private readonly storageRepo: Repository<Storage>,
-  ) {}
+  ) { }
 
   async createStorage(dto: CreateStorageDto): Promise<Storage> {
-    const storage = this.storageRepo.create(dto);
-    return this.storageRepo.save(storage);
+    try {
+      const storage = this.storageRepo.create(dto);
+      return this.storageRepo.save(storage);
+    } catch (error: any) {
+      //Postrgres 23505->duplicate of unique fields violation: //409
+      if (error.code === '23505') { throw new ConflictException(`Duplicate COnflict: Storage already exists.`) }
+      //Postrgres 23514->db constraints violation. second protection after dto class: //400
+      if (error.code === '23514') { throw new BadRequestException('Inputs violate database constraints.') }
+      //for any other ones: //500 
+      throw new InternalServerErrorException('Internal server error');
+    }
   }
 
   async getStorageList(): Promise<Storage[]> {
@@ -35,9 +44,9 @@ export class StorageService {
   }
 
   async updateStorage(id: number, dto: UpdateStorageDto): Promise<Storage> {
-    const storage= await this.storageRepo.update(id,dto);
-        if(!storage.affected){ throw new NotFoundException(`Storage with ID: ${id} not found`)}
-        return this.getStorageById(id); //return updated values
+    const storage = await this.storageRepo.update(id, dto);
+    if (!storage.affected) { throw new NotFoundException(`Storage with ID: ${id} not found`) }
+    return this.getStorageById(id); //return updated values
   }
 
   async deleteStorage(id: number): Promise<ResponseDto> {

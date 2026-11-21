@@ -3,9 +3,14 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import type { Relation } from 'typeorm';
+import { Admin } from '../../admin/entities/admin.entity.js';
+import { Booking } from '../../bookings/entities/booking.entity.js';
 
 
 export enum SlotStatus {
@@ -54,4 +59,20 @@ export class Slot {
 
   @DeleteDateColumn({ nullable: true })
   deletedAt?: Date;
+
+  // --- Relations ---
+  @ManyToOne(() => Booking, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'bookingId', referencedColumnName: 'bookingId' })
+  booking?: Relation<Booking> | null;
+
+  @ManyToOne(() => Admin, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'adminId', referencedColumnName: 'adminId' })
+  admin?: Relation<Admin> | null;
 }

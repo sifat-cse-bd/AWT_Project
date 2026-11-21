@@ -1,61 +1,66 @@
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, PrimaryColumn, PrimaryGeneratedColumn, Relation, RelationId, UpdateDateColumn } from "typeorm";
-import { Booking } from "../../bookings/entities/booking.entity.js";
-import { User } from "../../users/entities/user.entity.js";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import type { Relation } from 'typeorm';
+import { Storage } from '../../storage/entities/storage.entity.js';
+import { Booking } from '../../bookings/entities/booking.entity.js';
 
-export enum HazardLevel{
-   LOW='LOW', MEDIUM='MEDIUM', HIGH='HIGH', EXTREME='EXTREME'
- }
- 
- @Entity('chemicals')
- export class Chemical{
+export enum HazardLevel {
+   LOW = 'LOW', MEDIUM = 'MEDIUM', HIGH = 'HIGH', EXTREME = 'EXTREME'
+}
 
-    @PrimaryGeneratedColumn()
-    chemId:number;
+@Entity('chemicals')
+export class Chemical {
 
-    @Column({type:'varchar'})
-    name:string;
+   @PrimaryGeneratedColumn()
+   chemId: number;
 
-    @Column({type:'text', nullable:true})
-    description:string|null;
+   @Column({ type: 'varchar' })
+   name: string;
 
-    @Column({type:'enum', enum:HazardLevel, default:HazardLevel.LOW})
-    hazardLevel:HazardLevel;
+   @Column({ type: 'text', nullable: true })
+   description: string | null;
 
-    @Column({type:'date'})//"YYYY-MM-DD"
-    expiryDate:string;
+   @Column({ type: 'enum', enum: HazardLevel, default: HazardLevel.LOW })
+   hazardLevel: HazardLevel;
 
-    @Column({type:'bool',default:true})
-    availability:boolean;
+   @Column({ type: 'date' })//"YYYY-MM-DD"
+   expiryDate: string;
 
-    // //RELATIONS CHEMICAL-(M)-------(1)-BOOKING
-    // @Column({nullable:true})
-    // bookingId:number|null;
+   @Column({ type: 'bool', default: true })
+   availability: boolean;
 
-    // @ManyToOne(() => Booking, (booking) => booking.chemicals,{ 
-    //   nullable: true, 
-    //   onDelete: 'SET NULL' 
-    // })
-    // @JoinColumn({ name:'bookingId'})
-    // booking?: Relation<Booking> | null;
+   @ManyToOne(() => Storage, p => p.chemicals)
+   @JoinColumn({ name: 'storeId' })
+   storage: Relation<Storage>;
 
-    // //RELATIONS CHEMICAL-(M)-------(1)-USER
-    // @Column({nullable:true})
-    // userId:number|null;
+   @ManyToOne(() => Booking, (booking) => booking.chemicals, {nullable: true, onDelete: 'SET NULL'
+   })
+   @JoinColumn({ name: 'bookingId' })
+   booking?: Relation<Booking> | null;
 
-    // @ManyToOne(() => User, (user) => user.chemicals,{ 
-    //   nullable: true, 
-    //   onDelete: 'SET NULL' 
-    // })
-    // @JoinColumn({ name:'userId'})
-    // labAssistant?: Relation<User> | null;
+   // //RELATIONS CHEMICAL-(M)-------(1)-BOOKING
+   // @Column({nullable:true})
+   // bookingId:number|null;
 
-    // //RELATIONS CHEMICAL-(M)-------(1)-STORAGELOCATION
-    // @ManyToMany(()=>StorageLocation,(storage)=>storage.chemicals)
-    // @JoinTable({ name: 'chemicalStorage', joinColumn: { name: 'chemId', referenceColumn: 'chemId' }, inverseJoinColumn: { name: 'storeId', referenceColumn: 'storeId' } })
-    // storages?: Relation<StorageLocation[]>;
-    
-    //TIMESTAMPs
-    @CreateDateColumn({ type: 'timestamptz' }) createdAt: Date;
-    @UpdateDateColumn({ name: 'updateAt', type: 'timestamptz' }) updateAt: Date;
-    @DeleteDateColumn({ name: 'deleteAt', type: 'timestamptz', nullable: true }) deleteAt?: Date;
- }
+
+
+   // //RELATIONS CHEMICAL-(M)-------(1)-USER
+   // @Column({nullable:true})
+   // userId:number|null;
+
+   // @ManyToOne(() => User, (user) => user.chemicals,{ 
+   //   nullable: true, 
+   //   onDelete: 'SET NULL' 
+   // })
+   // @JoinColumn({ name:'userId'})
+   // labAssistant?: Relation<User> | null;
+
+   // //RELATIONS CHEMICAL-(M)-------(1)-STORAGELOCATION
+   // @ManyToMany(()=>StorageLocation,(storage)=>storage.chemicals)
+   // @JoinTable({ name: 'chemicalStorage', joinColumn: { name: 'chemId', referenceColumn: 'chemId' }, inverseJoinColumn: { name: 'storeId', referenceColumn: 'storeId' } })
+   // storages?: Relation<StorageLocation[]>;
+
+   //TIMESTAMPs
+   @CreateDateColumn({ type: 'timestamptz' }) createdAt: Date;
+   @UpdateDateColumn({ name: 'updateAt', type: 'timestamptz' }) updateAt: Date;
+   @DeleteDateColumn({ name: 'deleteAt', type: 'timestamptz', nullable: true }) deleteAt?: Date;
+}

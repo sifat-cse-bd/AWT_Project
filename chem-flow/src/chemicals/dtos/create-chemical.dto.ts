@@ -57,6 +57,14 @@ export class CreateChemicalDto{
     })
     availability:boolean;
 
+    @IsInt()
+    @ApiProperty({
+        description: 'ID of the storage location where this chemical is stored',
+        example: 1,
+    })
+    storeId:number;
+
+
     // @IsOptional()
     // @IsInt()
     // @ApiProperty({

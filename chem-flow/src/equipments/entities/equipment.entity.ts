@@ -1,7 +1,7 @@
 import {Entity, CreateDateColumn, Column, PrimaryGeneratedColumn, UpdateDateColumn, DeleteDateColumn, ManyToOne, JoinColumn, } from 'typeorm';
 import type { Relation } from 'typeorm';
-
-import {User} from '../../users/entities/user.entity.js';
+import { User } from '../../users/entities/user.entity.js';
+import { Booking } from '../../bookings/entities/booking.entity.js';
 
 @Entity('equipments')
 export class Equipment 
@@ -39,4 +39,11 @@ export class Equipment
     })
     @JoinColumn({ name: 'userId', referencedColumnName: 'userId' })
     labAssistant: Relation<User>;
+
+    @ManyToOne(() => Booking, (booking) => booking.equipments, {
+        nullable: true,
+        onDelete: 'SET NULL',
+    })
+    @JoinColumn({ name: 'bookingId', referencedColumnName: 'bookingId' })
+    booking?: Relation<Booking> | null;
 }

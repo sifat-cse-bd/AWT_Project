@@ -144,6 +144,23 @@ export class UsersService {
         return { message: 'User found successfully', data: this.sanitize(user) };
     }
 
+    //Nahian
+    async findByUserId(userId: string) {
+        return await this.usersRepo.findOne({
+            where: {
+                userId,
+                isActive: true
+            },
+            select: {
+                id: true,
+                userId: true,
+                role: true,
+                isActive: true
+            }
+        });
+    }
+    //Nahian
+
     async update(userId: string, dto: UpdateUserDto, actor: AuthUser) {
         if (!userId?.trim()) throw new BadRequestException('User ID is required');
         const user = await this.usersRepo.findOne({ where: { userId } });

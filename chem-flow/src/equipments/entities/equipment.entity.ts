@@ -1,5 +1,5 @@
-import {Entity, CreateDateColumn, Column, PrimaryGeneratedColumn, UpdateDateColumn, DeleteDateColumn } from 'typeorm';
-import {ManyToOne, JoinColumn, } from 'typeorm';
+import {Entity, CreateDateColumn, Column, PrimaryGeneratedColumn, UpdateDateColumn, DeleteDateColumn, ManyToOne, JoinColumn, } from 'typeorm';
+
 import {User} from '../../users/entities/user.entity.js';
 
 @Entity('equipments')
@@ -31,11 +31,11 @@ export class Equipment
     @DeleteDateColumn({ nullable: true })
     deletedAt: Date;
 
-    @ManyToOne(() => User, 
+    @ManyToOne(() => User, user => user.equipments, 
     {
         nullable: false,
         onDelete: 'CASCADE',
     })
     @JoinColumn({ name: 'userId', referencedColumnName: 'userId' })
-    user: User;
+    labAssistant: User;
 }

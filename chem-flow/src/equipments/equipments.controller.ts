@@ -21,7 +21,7 @@ export class EquipmentsController
 {
   constructor(private readonly equipmentsService: EquipmentsService) {}
 
-  @ApiOperation({ summary: 'Create a new equipment', description: 'Registers a new equipment in the system with valid details.' })
+  @ApiOperation({ summary: 'Create a new equipment', description: 'Only administrators and managers can create new equipments.' })
   @ApiResponse({ status: 201, description: 'The equipment has been successfully created.' })
   @ApiResponse({ status: 400, description: 'Bad Request / Validation failed.' })
   @Roles('ADMIN', RegisterableUserRole.MANAGER)
@@ -31,7 +31,7 @@ export class EquipmentsController
     return this.equipmentsService.CreateEquipment(dto);
   }
 
-  @ApiOperation({ summary: 'Get all equipments', description: 'Retrieves a list of all registered equipments.' })
+  @ApiOperation({ summary: 'Get all equipments', description: 'Only administrators, managers and lab assistants can retrieve a list of all registered equipments.' })
   @ApiResponse({ status: 200, description: 'List of equipments retrieved successfully.' })
   @Roles('ADMIN', RegisterableUserRole.MANAGER, RegisterableUserRole.LAB_ASSISTANT)
   @Get()
@@ -41,7 +41,7 @@ export class EquipmentsController
   }
 
 
-  @ApiOperation({ summary: 'Check equipment availability', description: 'Checks if an equipment is available for a requested quantity.' })
+  @ApiOperation({ summary: 'Check equipment availability', description: 'Only administrators, managers and lab assistants can check equipment availability with all attributes.' })
   @ApiResponse({ status: 200, description: 'Availability information retrieved successfully.' })
   @Roles('ADMIN', RegisterableUserRole.MANAGER, RegisterableUserRole.LAB_ASSISTANT)
   @Get('availability/:id/:requestedQTY')
@@ -50,8 +50,16 @@ export class EquipmentsController
     return this.equipmentsService.CheckEQPAvailability(id, requestedQTY);
   }
   
+  @ApiOperation({ summary: 'Search equipments by name', description: 'Students may search equipments by name for booking purposes.' })
+  @ApiResponse({ status: 200, description: 'Equipments matching the search criteria retrieved successfully.' })
+  @Roles('ADMIN', RegisterableUserRole.MANAGER, RegisterableUserRole.LAB_ASSISTANT, RegisterableUserRole.STUDENT)
+  @Get('search/:name')
+  searchEquipments(@Param('name') name: string) 
+  {
+    return this.equipmentsService.SearchEquipmentsByName(name);
+  }
 
-  @ApiOperation({ summary: 'Get an equipment by ID', description: 'Retrieval of a specific equipment using its unique ID.' })
+  @ApiOperation({ summary: 'Get an equipment by ID', description: 'Only administrators, managers and lab assistants can retrieve equipment details.' })
   @ApiResponse({ status: 200, description: 'Equipment found successfully.' })
   @ApiResponse({ status: 404, description: 'Equipment not found.' })
   @Roles('ADMIN', RegisterableUserRole.MANAGER, RegisterableUserRole.LAB_ASSISTANT)
@@ -62,7 +70,7 @@ export class EquipmentsController
   }
 
 
-  @ApiOperation({ summary: 'Update equipment details', description: 'Updates specific fields of an existing equipment by ID.' })
+  @ApiOperation({ summary: 'Update equipment details', description: 'Only administrators and managers can update equipment details.' })
   @ApiResponse({ status: 200, description: 'Equipment updated successfully.' })
   @ApiResponse({ status: 404, description: 'Equipment not found.' })
   @Roles('ADMIN', RegisterableUserRole.MANAGER)
@@ -72,7 +80,7 @@ export class EquipmentsController
     return this.equipmentsService.UpdateEquipment(id, dto);
   }
 
-  @ApiOperation({ summary: 'Delete an equipment', description: 'Soft deletes an equipment from the system using its unique ID.' })
+  @ApiOperation({ summary: 'Delete an equipment', description: 'Only administrators and managers can delete equipments.' })
   @ApiResponse({ status: 200, description: 'Equipment deleted successfully.' })
   @ApiResponse({ status: 404, description: 'Equipment not found.' })
   @Roles('ADMIN', RegisterableUserRole.MANAGER)

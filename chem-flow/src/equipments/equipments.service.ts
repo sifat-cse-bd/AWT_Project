@@ -1,11 +1,12 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
 import { CreateEquipmentDto } from './dto/create-equipment.dto.js';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto.js';
 import { Equipment } from './entities/equipment.entity.js';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UsersService } from '../users/users.service.js';
 import { RegisterableUserRole } from '../users/dto/create-user.dto.js';
+import { StorageService } from '../storage/storage.service.js';
 
 @Injectable()
 export class EquipmentsService 
@@ -13,7 +14,8 @@ export class EquipmentsService
   constructor(
     @InjectRepository(Equipment)
     private readonly equipmentRepo: Repository<Equipment>,
-    private readonly usersService: UsersService
+    private readonly usersService: UsersService,
+    private readonly storageService: StorageService
   ) {}
 
   async CreateEquipment(CreateEQP: CreateEquipmentDto): Promise<Equipment>
@@ -107,6 +109,28 @@ export class EquipmentsService
     
   }
 
+  async SearchEquipmentsByName(name: string)
+  {
+    if(!name.trim())
+      {
+        throw new BadRequestException('Equipment name is required for search.');
+      }
+
+      const equipments = await this.equipmentRepo.find
+      (
+        {
+          where: { name: ILike(`%${name}%`) },
+          select:
+          {
+            name: true,
+            description: true,
+            totalQty: true,
+          }
+        }
+      );
+      return equipments;
+  }
+
   async UpdateEquipment(id: number, updateEQP: UpdateEquipmentDto): Promise<Equipment>
   {
     const equipment = await this.GetEquipmentById(id);
@@ -164,7 +188,29 @@ export class EquipmentsService
       return `Equipment with ID ${id} deleted successfully.`
     }
     
-  
+  async AssignEquipmentToStorage(equipId: number, storeId: number): Promise<Equipment>
+  {
+      const equipment = await this.equipmentRepo.findOne({
+          where: { equipId },
+          relations: { storages: true }
+      });
+
+      if (!equipment) {
+          throw new NotFoundException('Equipment not found.');
+      }
+
+      const storage = await this.storageService.getStorageById(storeId);
+
+      if (equipment.storages.some(s => s.storeId === storeId)) {
+          throw new ConflictException(
+              'Equipment is already assigned to this storage.'
+          );
+      }
+
+      equipment.storages.push(storage);
+
+      return await this.equipmentRepo.save(equipment);
+  }
 
 
 }

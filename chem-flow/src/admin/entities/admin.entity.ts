@@ -3,7 +3,7 @@ import type { Relation } from 'typeorm';
 import { User } from '../../users/entities/user.entity.js';
 import { Slot } from '../../slots/entities/slot.entity.js';
 
-@Entity('admin')
+@Entity('admins')
 export class Admin {
   @PrimaryColumn({ type: 'varchar', length: 20 }) adminId: string;
 

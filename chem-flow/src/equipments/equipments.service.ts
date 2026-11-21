@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { CreateEquipmentDto } from './dto/create-equipment.dto.js';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto.js';
 import { Equipment } from './entities/equipment.entity.js';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UsersService } from '../users/users.service.js';
 import { RegisterableUserRole } from '../users/dto/create-user.dto.js';
@@ -105,6 +105,28 @@ export class EquipmentsService
       throw error;
     }
     
+  }
+
+  async SearchEquipmentsByName(name: string)
+  {
+    if(!name.trim())
+      {
+        throw new BadRequestException('Equipment name is required for search.');
+      }
+
+      const equipments = await this.equipmentRepo.find
+      (
+        {
+          where: { name: ILike(`%${name}%`) },
+          select:
+          {
+            name: true,
+            description: true,
+            totalQty: true,
+          }
+        }
+      );
+      return equipments;
   }
 
   async UpdateEquipment(id: number, updateEQP: UpdateEquipmentDto): Promise<Equipment>

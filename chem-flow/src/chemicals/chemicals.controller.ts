@@ -10,12 +10,14 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 
 @Controller('chemicals')
-@ApiBearerAuth()
+@ApiBearerAuth()//FOR AUTH---------------------------------------------------
+/*
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RegisterableUserRole.insertHereAllowedRole)
+*/ 
 export class ChemicalsController {
   constructor(private readonly chemicalsService: ChemicalsService) {}
-  
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RegisterableUserRole.MANAGER)
+
   @Post('create')
   async createChemical(@Body() dto:CreateChemicalDto):Promise<CreateChemicalDto>{
     return await this.chemicalsService.createChemical(dto);
@@ -41,13 +43,13 @@ export class ChemicalsController {
     return await this.chemicalsService.softDeleteChemical(id);
   }
 
-  @Get('low-stock')
-  async getLowStockList():Promise<CreateChemicalDto[]>{
-    return await this.chemicalsService.getLowStockList();
-  }
+  // @Get('low-stock')
+  // async getLowStockList():Promise<CreateChemicalDto[]>{
+  //   return await this.chemicalsService.getLowStockList();
+  // }
 
-  @Post('deduct/:id/:amount')
-  async deductChemicalQty(@Param('id',ParseIntPipe) id:number, @Param('amount',ParseIntPipe) amount:number):Promise<CreateChemicalDto>{
-    return await this.chemicalsService.deductChemicalQty(id,amount);
-  }
+  // @Post('deduct/:id/:amount')
+  // async deductChemicalQty(@Param('id',ParseIntPipe) id:number, @Param('amount',ParseIntPipe) amount:number):Promise<CreateChemicalDto>{
+  //   return await this.chemicalsService.deductChemicalQty(id,amount);
+  // }
 }

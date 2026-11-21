@@ -1,7 +1,7 @@
-import {Entity, CreateDateColumn, Column, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn, DeleteDateColumn } from 'typeorm';
+import {Entity, CreateDateColumn, Column, PrimaryGeneratedColumn, UpdateDateColumn, DeleteDateColumn, ManyToOne, JoinColumn, } from 'typeorm';
 import type { Relation } from 'typeorm';
-import { Booking } from '../../bookings/entities/booking.entity.js';
 
+import {User} from '../../users/entities/user.entity.js';
 
 @Entity('equipments')
 export class Equipment 
@@ -32,7 +32,11 @@ export class Equipment
     @DeleteDateColumn({ nullable: true })
     deletedAt: Date;
 
-    @ManyToOne(() => Booking, { nullable: true, onDelete: 'SET NULL' })
-    @JoinColumn({ name: 'bookingId', referencedColumnName: 'bookingId' })
-    booking?: Relation<Booking> | null;
+    @ManyToOne(() => User, user => user.equipments, 
+    {
+        nullable: false,
+        onDelete: 'CASCADE',
+    })
+    @JoinColumn({ name: 'userId', referencedColumnName: 'userId' })
+    labAssistant: Relation<User>;
 }

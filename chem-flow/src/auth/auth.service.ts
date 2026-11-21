@@ -16,14 +16,13 @@ export class AuthService {
 
         const checkPW = await bcrypt.compare(pw,userExists.passwordHash);
         if(!checkPW){throw new UnauthorizedException('Invalid email or password')}
-        console.log(userExists);
         const payload= {
             userId: userExists.userId,
             role: userExists.role
         };
 
         return { 
-            accessToken: await this.jwtService.signAsync(payload),//for encoding
+            accessToken: await this.jwtService.signAsync(payload),//encrp key generated using payload for every exiry period
         };
     }
 

@@ -1,13 +1,21 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { ChemicalsService } from './chemicals.service.js';
 import { CreateChemicalDto } from './dtos/create-chemical.dto.js';
 import { UpdateChemicalDto } from './dtos/update-chemical.dto.js';
 import { ResponseDto } from './dtos/response.dto.js';
+import { ApiBearerAuth } from '@nestjs/swagger';
+import { Roles } from '../auth/decorators/roles.decorator.js';
+import { RegisterableUserRole } from '../users/dto/create-user.dto.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../auth/guards/roles.guard.js';
 
 @Controller('chemicals')
+@ApiBearerAuth()
 export class ChemicalsController {
   constructor(private readonly chemicalsService: ChemicalsService) {}
   
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RegisterableUserRole.MANAGER)
   @Post('create')
   async createChemical(@Body() dto:CreateChemicalDto):Promise<CreateChemicalDto>{
     return await this.chemicalsService.createChemical(dto);

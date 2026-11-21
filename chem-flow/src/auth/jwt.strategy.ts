@@ -13,15 +13,15 @@ interface JwtPayLoad{
 export class JwtStrategy extends PassportStrategy(Strategy){
     constructor(config: ConfigService){ //injectable for access env
         super({
-             //extracts from token in Bearer token
+             //extracts token from Bearer token
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration:false,
-            secretOrKey: config.getOrThrow<string>('JWT_SECRET')
+            secretOrKey: config.getOrThrow<string>('JWT_SECRET') //from env
         });
     }
 
     validate(payload: JwtPayLoad){//checks if key is valid
-        return{
+        return{//if valid, return these as metadata for guards to verify
             userId: payload.userID,
             role: payload.role
         }

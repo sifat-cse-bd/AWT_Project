@@ -28,12 +28,13 @@ export class Booking {
     @OneToOne(() => Group, (group) => group.booking, {
         nullable: false,
         onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
     })
-    @JoinColumn({ name: 'groupId', referencedColumnName: 'groupId' })
+    @JoinColumn({ name: 'groupName', referencedColumnName: 'name' })
     group: Relation<Group>;
 
     @RelationId((booking: Booking) => booking.group)
-    groupId: string;
+    groupName: string;
 
     @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
     @JoinColumn({ name: 'userId', referencedColumnName: 'userId' })

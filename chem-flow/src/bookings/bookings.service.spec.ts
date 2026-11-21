@@ -11,18 +11,46 @@ import { BookingsService } from './bookings.service.js';
 describe('BookingsService', () => {
   let bookingsService: BookingsService;
   const bookingsRepo = {
-    create: vi.fn(),
-    find: vi.fn(),
-    findOne: vi.fn(),
-    save: vi.fn(),
+    createQueryBuilder: vi.fn(),
   };
-  const usersRepo = { findOne: vi.fn() };
-  const groupsRepo = { findOne: vi.fn() };
+  const usersRepo = { createQueryBuilder: vi.fn() };
+  const groupsRepo = { createQueryBuilder: vi.fn() };
+
+  const createQueryBuilder = () => ({
+    andWhere: vi.fn().mockReturnThis(),
+    distinct: vi.fn().mockReturnThis(),
+    execute: vi.fn().mockResolvedValue({
+      affected: 1,
+      generatedMaps: [],
+      identifiers: [{ bookingId: 5 }],
+      raw: [{ bookingId: 5 }],
+    }),
+    getMany: vi.fn(),
+    getOne: vi.fn(),
+    innerJoin: vi.fn().mockReturnThis(),
+    insert: vi.fn().mockReturnThis(),
+    into: vi.fn().mockReturnThis(),
+    leftJoinAndSelect: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    returning: vi.fn().mockReturnThis(),
+    set: vi.fn().mockReturnThis(),
+    update: vi.fn().mockReturnThis(),
+    values: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+  });
+
+  let bookingQueryBuilder: ReturnType<typeof createQueryBuilder>;
+  let userQueryBuilder: ReturnType<typeof createQueryBuilder>;
+  let groupQueryBuilder: ReturnType<typeof createQueryBuilder>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    bookingsRepo.create.mockImplementation((value) => value);
-    bookingsRepo.save.mockImplementation(async (value) => value);
+    bookingQueryBuilder = createQueryBuilder();
+    userQueryBuilder = createQueryBuilder();
+    groupQueryBuilder = createQueryBuilder();
+    bookingsRepo.createQueryBuilder.mockReturnValue(bookingQueryBuilder);
+    usersRepo.createQueryBuilder.mockReturnValue(userQueryBuilder);
+    groupsRepo.createQueryBuilder.mockReturnValue(groupQueryBuilder);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -43,18 +71,35 @@ describe('BookingsService', () => {
     };
     const group = {
       groupId: 'GRP-261121-001',
+      name: 'Organic Chemistry Group',
       createdBy: { userId: student.userId },
       memberships: [{ user: { userId: student.userId } }],
     };
-    groupsRepo.findOne.mockResolvedValue(group);
-    bookingsRepo.findOne.mockResolvedValue(null);
+    groupQueryBuilder.getOne.mockResolvedValue(group);
+    bookingQueryBuilder.getOne
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        bookingId: 5,
+        title: 'Lab work',
+        group,
+        manager: null,
+        cancelAt: null,
+        groupName: group.name,
+        userId: null,
+      });
 
     const result = await bookingsService.create(
-      { title: 'Lab work', groupId: group.groupId },
+      { title: 'Lab work', groupName: group.name },
       student,
     );
 
-    expect(bookingsRepo.create).toHaveBeenCalledWith({
+    expect(groupsRepo.createQueryBuilder).toHaveBeenCalledWith('group');
+    expect(groupQueryBuilder.where).toHaveBeenCalledWith(
+      'group.name = :groupName',
+      { groupName: group.name },
+    );
+    expect(bookingsRepo.createQueryBuilder).toHaveBeenCalled();
+    expect(bookingQueryBuilder.values).toHaveBeenCalledWith({
       title: 'Lab work',
       group,
       manager: null,
@@ -62,7 +107,7 @@ describe('BookingsService', () => {
     });
     expect(result.data).toMatchObject({
       title: 'Lab work',
-      groupId: group.groupId,
+      groupName: group.name,
       userId: null,
     });
   });
@@ -75,9 +120,9 @@ describe('BookingsService', () => {
     };
 
     await expect(
-      bookingsService.create({ title: 'Lab work', groupId: 'GRP-1' }, admin),
+      bookingsService.create({ title: 'Lab work', groupName: 'Organic Chemistry Group' }, admin),
     ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(groupsRepo.findOne).not.toHaveBeenCalled();
+    expect(groupsRepo.createQueryBuilder).not.toHaveBeenCalled();
   });
 
   it('rejects a second booking for the same group', async () => {
@@ -86,16 +131,17 @@ describe('BookingsService', () => {
       role: UserRole.STUDENT,
       accountType: 'USER',
     };
-    groupsRepo.findOne.mockResolvedValue({
+    groupQueryBuilder.getOne.mockResolvedValue({
       groupId: 'GRP-261121-001',
+      name: 'Organic Chemistry Group',
       createdBy: { userId: student.userId },
       memberships: [],
     });
-    bookingsRepo.findOne.mockResolvedValue({ bookingId: 5 });
+    bookingQueryBuilder.getOne.mockResolvedValue({ bookingId: 5 });
 
     await expect(
       bookingsService.create(
-        { title: 'Lab work', groupId: 'GRP-261121-001' },
+        { title: 'Lab work', groupName: 'Organic Chemistry Group' },
         student,
       ),
     ).rejects.toBeInstanceOf(ConflictException);
@@ -121,12 +167,18 @@ describe('BookingsService', () => {
       role: UserRole.MANAGER,
       accountType: 'USER',
     };
-    bookingsRepo.findOne.mockResolvedValue(booking);
-    usersRepo.findOne.mockResolvedValue(manager);
+    bookingQueryBuilder.getOne
+      .mockResolvedValueOnce(booking)
+      .mockResolvedValueOnce({ ...booking, manager });
+    userQueryBuilder.getOne.mockResolvedValue(manager);
 
     const result = await bookingsService.approve(5, actor);
 
-    expect(booking.manager).toBe(manager);
+    expect(bookingQueryBuilder.set).toHaveBeenCalledWith({ userId: manager.userId });
+    expect(userQueryBuilder.where).toHaveBeenCalledWith(
+      'user.userId = :userId',
+      { userId: manager.userId },
+    );
     expect(result.data.userId).toBe(manager.userId);
   });
 
@@ -139,6 +191,6 @@ describe('BookingsService', () => {
 
     await expect(bookingsService.approve(5, admin))
       .rejects.toBeInstanceOf(ForbiddenException);
-    expect(bookingsRepo.findOne).not.toHaveBeenCalled();
+    expect(bookingsRepo.createQueryBuilder).not.toHaveBeenCalled();
   });
 });

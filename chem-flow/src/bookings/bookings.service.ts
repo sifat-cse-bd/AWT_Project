@@ -3,10 +3,11 @@ import {
     ConflictException,
     ForbiddenException,
     Injectable,
+    InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindManyOptions, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import type { AuthUser } from '../auth/auth-user.js';
 import { Group } from '../groups/entities/group.entity.js';
 import { User, UserRole } from '../users/entities/user.entity.js';
@@ -30,25 +31,38 @@ export class BookingsService {
             throw new ForbiddenException('Only authenticated students can request bookings');
         }
 
-        const group = await this.findGroup(dto.groupId);
+        const group = await this.findGroup(dto.groupName);
         if (!this.isGroupMember(group, actor.userId)) {
             throw new ForbiddenException('Only a group member can request a booking for this group');
         }
 
-        const existingBooking = await this.bookingsRepo.findOne({
-            where: { group: { groupId: dto.groupId } },
-        });
+        const existingBooking = await this.bookingsRepo
+            .createQueryBuilder('booking')
+            .innerJoin('booking.group', 'group')
+            .where('group.name = :groupName', { groupName: dto.groupName })
+            .getOne();
         if (existingBooking) {
             throw new ConflictException('This group already has a booking request');
         }
 
-        const booking = this.bookingsRepo.create({
-            title: dto.title,
-            group,
-            manager: null,
-            cancelAt: null,
-        });
-        const savedBooking = await this.bookingsRepo.save(booking);
+        const insertResult = await this.bookingsRepo
+            .createQueryBuilder()
+            .insert()
+            .into(Booking)
+            .values({
+                title: dto.title,
+                group,
+                manager: null,
+                cancelAt: null,
+            })
+            .returning(['bookingId'])
+            .execute();
+        const bookingId = insertResult.identifiers[0]?.bookingId;
+        if (bookingId === undefined) {
+            throw new InternalServerErrorException('Booking was created but its ID was not returned');
+        }
+
+        const savedBooking = await this.findBooking(Number(bookingId));
         return {
             message: 'Booking request created successfully',
             data: this.toResponse(savedBooking),
@@ -56,22 +70,16 @@ export class BookingsService {
     }
 
     async findAll(actor: AuthUser) {
-        const options: FindManyOptions<Booking> = {
-            relations: {
-                group: { memberships: { user: true }, createdBy: true },
-                manager: true,
-            },
-            order: { createdAt: 'DESC' },
-        };
+        const query = this.bookingQuery().orderBy('booking.createdAt', 'DESC');
 
         if (!this.canViewAll(actor)) {
-            options.where = [
-                { group: { createdBy: { userId: actor.userId } } },
-                { group: { memberships: { user: { userId: actor.userId } } } },
-            ];
+            query.andWhere(
+                '(creator.userId = :userId OR member.userId = :userId)',
+                { userId: actor.userId },
+            );
         }
 
-        const bookings = await this.bookingsRepo.find(options);
+        const bookings = await query.getMany();
         return {
             message: 'Bookings fetched successfully',
             count: bookings.length,
@@ -93,8 +101,15 @@ export class BookingsService {
         this.ensureCanManage(booking, actor);
         this.ensureNotCancelled(booking);
 
-        if (dto.title !== undefined) booking.title = dto.title;
-        const updatedBooking = await this.bookingsRepo.save(booking);
+        if (dto.title !== undefined) {
+            await this.bookingsRepo
+                .createQueryBuilder()
+                .update(Booking)
+                .set({ title: dto.title })
+                .where('"bookingId" = :bookingId', { bookingId })
+                .execute();
+        }
+        const updatedBooking = await this.findBooking(bookingId);
         return {
             message: 'Booking updated successfully',
             data: this.toResponse(updatedBooking),
@@ -106,8 +121,13 @@ export class BookingsService {
         this.ensureCanManage(booking, actor);
         this.ensureNotCancelled(booking);
 
-        booking.cancelAt = new Date();
-        const cancelledBooking = await this.bookingsRepo.save(booking);
+        await this.bookingsRepo
+            .createQueryBuilder()
+            .update(Booking)
+            .set({ cancelAt: new Date() })
+            .where('"bookingId" = :bookingId', { bookingId })
+            .execute();
+        const cancelledBooking = await this.findBooking(bookingId);
         return {
             message: 'Booking cancelled successfully',
             data: this.toResponse(cancelledBooking),
@@ -125,19 +145,23 @@ export class BookingsService {
             throw new ConflictException('This booking has already been approved');
         }
 
-        const manager = await this.usersRepo.findOne({
-            where: {
-                userId: actor.userId,
-                role: UserRole.MANAGER,
-                isActive: true,
-            },
-        });
+        const manager = await this.usersRepo
+            .createQueryBuilder('user')
+            .where('user.userId = :userId', { userId: actor.userId })
+            .andWhere('user.role = :role', { role: UserRole.MANAGER })
+            .andWhere('user.isActive = :isActive', { isActive: true })
+            .getOne();
         if (!manager) {
             throw new ForbiddenException('An active MANAGER account is required to approve bookings');
         }
 
-        booking.manager = manager;
-        const approvedBooking = await this.bookingsRepo.save(booking);
+        await this.bookingsRepo
+            .createQueryBuilder()
+            .update(Booking)
+            .set({ userId: manager.userId })
+            .where('"bookingId" = :bookingId', { bookingId })
+            .execute();
+        const approvedBooking = await this.findBooking(bookingId);
         return {
             message: 'Booking approved successfully',
             data: this.toResponse(approvedBooking),
@@ -149,24 +173,34 @@ export class BookingsService {
             throw new BadRequestException('Invalid booking ID');
         }
 
-        const booking = await this.bookingsRepo.findOne({
-            where: { bookingId },
-            relations: {
-                group: { memberships: { user: true }, createdBy: true },
-                manager: true,
-            },
-        });
+        const booking = await this.bookingQuery()
+            .where('booking.bookingId = :bookingId', { bookingId })
+            .getOne();
         if (!booking) throw new NotFoundException(`Booking ${bookingId} not found`);
         return booking;
     }
 
-    private async findGroup(groupId: string) {
-        const group = await this.groupsRepo.findOne({
-            where: { groupId },
-            relations: { memberships: { user: true }, createdBy: true },
-        });
-        if (!group) throw new NotFoundException(`Group ${groupId} not found`);
+    private async findGroup(groupName: string) {
+        const group = await this.groupsRepo
+            .createQueryBuilder('group')
+            .leftJoinAndSelect('group.memberships', 'membership')
+            .leftJoinAndSelect('membership.user', 'member')
+            .leftJoinAndSelect('group.createdBy', 'creator')
+            .where('group.name = :groupName', { groupName })
+            .getOne();
+        if (!group) throw new NotFoundException(`Group ${groupName} not found`);
         return group;
+    }
+
+    private bookingQuery() {
+        return this.bookingsRepo
+            .createQueryBuilder('booking')
+            .leftJoinAndSelect('booking.group', 'group')
+            .leftJoinAndSelect('group.memberships', 'membership')
+            .leftJoinAndSelect('membership.user', 'member')
+            .leftJoinAndSelect('group.createdBy', 'creator')
+            .leftJoinAndSelect('booking.manager', 'manager')
+            .distinct(true);
     }
 
     private canViewAll(actor: AuthUser): boolean {
@@ -211,7 +245,7 @@ export class BookingsService {
             createdAt: booking.createdAt,
             updatedAt: booking.updatedAt,
             cancelAt: booking.cancelAt ?? null,
-            groupId: booking.group?.groupId ?? booking.groupId,
+            groupName: booking.group?.name ?? booking.groupName,
             userId: booking.manager?.userId ?? booking.userId ?? null,
         };
     }

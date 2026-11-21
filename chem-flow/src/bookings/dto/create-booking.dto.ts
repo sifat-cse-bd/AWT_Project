@@ -13,12 +13,12 @@ export class CreateBookingDto {
   title: string;
 
   @ApiProperty({
-    example: 'GRP-261121-001',
-    maxLength: 60,
-    description: 'Existing group requesting the booking. Only a group member may submit it.',
+    example: 'Organic Chemistry Group',
+    maxLength: 255,
+    description: 'Unique name of the existing group requesting the booking. Only a group member may submit it.',
   })
   @IsString()
   @IsNotEmpty()
-  @MaxLength(60)
-  groupId: string;
+  @MaxLength(255)
+  groupName: string;
 }

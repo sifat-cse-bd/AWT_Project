@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { UsersService } from '../users/users.service.js';
 import { RegisterableUserRole } from '../users/dto/create-user.dto.js';
 import { StorageService } from '../storage/storage.service.js';
+import { Storage } from '../storage/entities/storage.entity.js';
 
 @Injectable()
 export class EquipmentsService 
@@ -212,5 +213,18 @@ export class EquipmentsService
       return await this.equipmentRepo.save(equipment);
   }
 
+  async GetEquipmentStorages(equipId: number): Promise<Storage[]>
+  {
+      const equipment = await this.equipmentRepo.findOne({
+          where: { equipId },
+          relations: { storages: true }
+      });
+
+      if (!equipment) {
+          throw new NotFoundException('Equipment not found.');
+      }
+
+      return equipment.storages;
+  }
 
 }

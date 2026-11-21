@@ -1,31 +1,46 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { UsersService } from '../users/users.service.js';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt'
+import * as bcrypt from 'bcrypt';
+import { AdminService } from '../admin/admin.service.js';
+import { UsersService } from '../users/users.service.js';
 
 @Injectable()
 export class AuthService {
-    constructor(
-        private readonly usersService:UsersService,
-        private readonly jwtService:JwtService, //for token
-    ){}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly adminService: AdminService,
+    private readonly jwtService: JwtService,
+  ) {}
 
-    async login(email:string, pw:string){
-        const userExists = await this.usersService.findByEmailForAuth(email);
-        if(!userExists){throw new UnauthorizedException('Invalid email')}
+  async login(userId: string, password: string) {
+    const user = await this.usersService.findByUserIdForAuth(userId);
+    if (user) {
+      if (!(await bcrypt.compare(password, user.passwordHash))) {
+        throw new UnauthorizedException('Invalid user ID or password');
+      }
 
-        const checkPW = await bcrypt.compare(pw,userExists.passwordHash);
-        if(!checkPW){throw new UnauthorizedException('Invalid email or password')}
-        console.log(userExists);
-        const payload= {
-            userID: userExists.userId,
-            userRole: userExists.role
-        };
-
-        return { 
-            accessToken: await this.jwtService.signAsync(payload),//for encoding
-        };
+      return {
+        accessToken: await this.jwtService.signAsync({
+          sub: user.userId,
+          userId: user.userId,
+          role: user.role,
+          accountType: 'USER',
+        }),
+      };
     }
 
+    const admin = await this.adminService.findForLogin(userId);
+    if (!admin || !(await bcrypt.compare(password, admin.passwordHash))) {
+      throw new UnauthorizedException('Invalid user ID or password');
+    }
 
+    return {
+      accessToken: await this.jwtService.signAsync({
+        sub: admin.adminId,
+        userId: admin.adminId,
+        role: 'ADMIN',
+        accountType: 'ADMIN',
+      }),
+    };
+  }
 }

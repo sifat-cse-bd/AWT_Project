@@ -1,11 +1,9 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, DeleteDateColumn, ManyToOne, JoinColumn, OneToMany, RelationId } from 'typeorm';
 import type { Relation } from 'typeorm';
-
-export enum UserRole {
-    MANAGER = 'MANAGER',
-    LAB_ASSISTANT = 'LAB_ASSISTANT',
-    STUDENT = 'STUDENT',
-}
+import { RegisterableUserRole as UserRole } from '../dto/create-user.dto.js';
+export { RegisterableUserRole as UserRole } from '../dto/create-user.dto.js';
+import { Admin } from '../../admin/entities/admin.entity.js';
+import { Membership } from '../../groups/entities/membership.entity.js';
 
 @Entity('users')
 export class User {
@@ -39,6 +37,15 @@ export class User {
     @DeleteDateColumn({ nullable: true })
     deletedAt: Date;
 
-    
+    //relationship add
+    @ManyToOne(() => Admin, (admin) => admin.users, { nullable: true, onDelete: 'SET NULL', onUpdate: 'CASCADE' })
+    @JoinColumn({ name: 'adminId', referencedColumnName: 'adminId' })
+    admin?: Relation<Admin>;
 
+    @RelationId((user: User) => user.admin)
+    adminId?: string;
+
+    @OneToMany(() => Membership, (membership) => membership.user)
+    memberships?: Relation<Membership[]>;
 }
+

@@ -14,7 +14,7 @@ async function bootstrap() {
   }));
 
   //Swagger UI setup
-  const config = new DocumentBuilder().setTitle('Chemistry Lab Management and Inventory API').build();
+  const config = new DocumentBuilder().setTitle('Chemistry Lab Management and Inventory API').addBearerAuth().build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('ChemFlow-api', app, document);
 

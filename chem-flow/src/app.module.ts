@@ -13,8 +13,8 @@ import { DocumentsModule } from './documents/documents.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { config } from 'process';
-import { SlotsModule } from './slots/slots.service.js';
+import { SlotsModule } from './slots/slots.module.js';
+import { AdminModule } from './admin/admin.module.js';
 
 @Module({
   imports: [
@@ -49,6 +49,7 @@ import { SlotsModule } from './slots/slots.service.js';
     MailModule,
     AuditModule,
     SlotsModule,
+    AdminModule,
   ],
   
   controllers: [AppController],

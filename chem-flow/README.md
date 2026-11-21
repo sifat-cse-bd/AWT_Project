@@ -31,6 +31,18 @@
 $ npm install
 ```
 
+## Authentication and user roles
+
+Set `JWT_SECRET` and, for the one-time admin seed, `ADMIN_ID`, `ADMIN_NAME`,
+`ADMIN_EMAIL`, and `ADMIN_PASSWORD` in the environment. The admin is created in
+the `admin` table only when that table is empty; changing these values does not
+replace an existing admin.
+
+Login with `POST /auth/login` using `userId` and `password`. Admins create user
+accounts through `POST /users/create`. Users can view and update their own
+profiles; managers can also view lab-assistant accounts. Only admins can
+change roles/status or soft-delete users.
+
 ## Compile and run the project
 
 ```bash

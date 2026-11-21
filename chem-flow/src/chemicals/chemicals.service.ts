@@ -24,7 +24,7 @@ export class ChemicalsService {
 
         }catch(error:any){
             //Postrgres 23505->duplicate of unique fields violation: //409
-            if(error.code==='23505'){throw new ConflictException(`Duplicate COnflict: Chemical with ID: ${dto.id} already exists.`)}
+            if(error.code==='23505'){throw new ConflictException(`Duplicate COnflict: Chemical with ID: ${dto.chemicalId} already exists.`)}
             //Postrgres 23514->db constraints violation. second protection after dto class: //400
             if(error.code==='23514'){throw new BadRequestException('Inputs violate database constraints.')}
             //for any other ones: //500 

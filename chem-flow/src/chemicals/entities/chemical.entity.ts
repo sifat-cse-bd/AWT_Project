@@ -1,6 +1,8 @@
 import { Column, Entity, PrimaryColumn } from "typeorm";
-import { HazardLevel } from "../dtos/create-chemical.dto.js";
 
+export enum HazardLevel{
+   LOW='LOW', MEDIUM='MEDIUM', HIGH='HIGH', EXTREME='EXTREME'
+ }
  
  @Entity('chemicals')
  export class Chemical{

@@ -10,12 +10,14 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 
 @Controller('chemicals')
-@ApiBearerAuth()
+@ApiBearerAuth()//FOR AUTH---------------------------------------------------
+/*
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RegisterableUserRole.insertHereAllowedRole)
+*/ 
 export class ChemicalsController {
   constructor(private readonly chemicalsService: ChemicalsService) {}
-  
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RegisterableUserRole.MANAGER)
+
   @Post('create')
   async createChemical(@Body() dto:CreateChemicalDto):Promise<CreateChemicalDto>{
     return await this.chemicalsService.createChemical(dto);

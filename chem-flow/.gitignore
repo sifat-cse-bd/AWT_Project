@@ -30,6 +30,8 @@ lerna-debug.log*
 !src/auth/auth.service.spec.ts
 !src/users/users.service.spec.ts
 !src/admin/admin.service.spec.ts
+!src/groups/groups.service.spec.ts
+!src/bookings/bookings.service.spec.ts
 
 # IDEs and editors
 /.idea

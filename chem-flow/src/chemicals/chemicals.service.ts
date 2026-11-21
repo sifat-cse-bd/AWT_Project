@@ -6,6 +6,7 @@ import { Storage } from '../storage/entities/storage.entity.js';
 import { CreateChemicalDto } from './dtos/create-chemical.dto.js';
 import { UpdateChemicalDto } from './dtos/update-chemical.dto.js';
 import { ResponseDto } from './dtos/response.dto.js';
+import { PaginationDto } from './dtos/pagination.dto.js';
 
 @Injectable()
 export class ChemicalsService {
@@ -44,10 +45,12 @@ export class ChemicalsService {
     }
 
     //read list
-    async getChemicalsList():Promise<Chemical[]>{
-        const list = await this.chemicalRepo.find({
+    async getChemicalsList({page,limit}:PaginationDto):Promise<Chemical[]>{
+        const [list,total] = await this.chemicalRepo.findAndCount({
             relations: { storage: true },
             order: { chemId: 'ASC' },
+            skip:(page-1)*limit,
+            take:limit
         });
         if(list.length===0){throw new NotFoundException('List is empty')}//404
         return list;

@@ -1,4 +1,6 @@
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryColumn, PrimaryGeneratedColumn, Relation, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, PrimaryColumn, PrimaryGeneratedColumn, Relation, RelationId, UpdateDateColumn } from "typeorm";
+import { Booking } from "../../bookings/entities/booking.entity.js";
+import { User } from "../../users/entities/user.entity.js";
 
 export enum HazardLevel{
    LOW='LOW', MEDIUM='MEDIUM', HIGH='HIGH', EXTREME='EXTREME'
@@ -34,11 +36,33 @@ export enum HazardLevel{
     @Column({type:'bool',default:true})
     availability:boolean;
 
-    //RELATIONS
-    //booking?:Relation<Booking>|null;
+    //RELATIONS CHEMICAL-(M)-------(1)-BOOKING
+    @Column({nullable:true})
+    bookingId:number|null;
 
+    @ManyToOne(() => Booking, (booking) => booking.chemicals,{ 
+      nullable: true, 
+      onDelete: 'SET NULL' 
+    })
+    @JoinColumn({ name:'bookingId'})
+    booking?: Relation<Booking> | null;
 
+    //RELATIONS CHEMICAL-(M)-------(1)-USER
+    @Column({nullable:true})
+    userId:number|null;
 
+    @ManyToOne(() => User, (user) => user.chemicals,{ 
+      nullable: true, 
+      onDelete: 'SET NULL' 
+    })
+    @JoinColumn({ name:'userId'})
+    labAssistant?: Relation<User> | null;
+
+    //RELATIONS CHEMICAL-(M)-------(1)-STORAGELOCATION
+    @ManyToMany(()=>StorageLocation,(storage)=>storage.chemicals)
+    @JoinTable({ name: 'chemicalStorage', joinColumn: { name: 'chemId', referenceColumn: 'chemId' }, inverseJoinColumn: { name: 'storeId', referenceColumn: 'storeId' } })
+    storages?: Relation<StorageLocation[]>;
+    
 
     //TIMESTAMPs
     @CreateDateColumn({ type: 'timestamptz' }) createdAt: Date;

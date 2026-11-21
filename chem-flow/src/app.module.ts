@@ -14,6 +14,7 @@ import { MailModule } from './mail/mail.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { config } from 'process';
+import { AdminModule } from './admin/admin.module.js';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { config } from 'process';
     DocumentsModule,
     MailModule,
     AuditModule,
+    AdminModule,
   ],
   
   controllers: [AppController],

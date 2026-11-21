@@ -227,4 +227,32 @@ export class EquipmentsService
       return equipment.storages;
   }
 
+  async RemoveEquipmentFromStorage(equipId: number, storeId: number): Promise<Equipment>
+  {
+      const equipment = await this.equipmentRepo.findOne({
+          where: { equipId },
+          relations: { storages: true }
+      });
+
+      if (!equipment) {
+          throw new NotFoundException('Equipment not found.');
+      }
+
+      const assigned = equipment.storages.some(
+          storage => storage.storeId === storeId
+      );
+
+      if (!assigned) {
+          throw new NotFoundException(
+              'Equipment is not assigned to this storage.'
+          );
+      }
+
+      equipment.storages = equipment.storages.filter(
+          storage => storage.storeId !== storeId
+      );
+
+      return await this.equipmentRepo.save(equipment);
+  }
+
 }

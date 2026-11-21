@@ -104,7 +104,28 @@ export class EquipmentsController
     {
       return this.equipmentsService.AssignEquipmentToStorage(equipId, storeId);
     }
-      
+    @ApiOperation({ summary: 'Get storages for an equipment', description: 'Only administrators, managers and lab assistants can retrieve the storage sections associated with a specific equipment.' })
+    @ApiResponse({ status: 200, description: 'Storages for the equipment retrieved successfully.' })
+    @ApiResponse({ status: 404, description: 'Equipment not found.' })
+    @ApiResponse({status: 403, description: 'Forbidden. Only administrators, managers and lab assistants can retrieve the storage sections associated with a specific equipment.'})
+    @Roles('ADMIN', RegisterableUserRole.MANAGER, RegisterableUserRole.LAB_ASSISTANT)  
+    @Get(':equipId/storages')
+    GetEquipmentStorages(
+    @Param('equipId', ParseIntPipe) equipId: number) 
+    {
+        return this.equipmentsService.GetEquipmentStorages(equipId);
+    }
 
-
+    @ApiOperation({ summary: 'Remove equipment from storage', description: 'Only administrators and managers can remove equipments from storage sections.' })
+    @ApiResponse({ status: 200, description: 'Equipment removed from storage successfully.' })
+    @ApiResponse({ status: 404, description: 'Equipment or storage section not found.' })
+    @ApiResponse({status: 403, description: 'Forbidden. Only administrators and managers can remove equipments from storage sections.'})
+    @Roles('ADMIN', RegisterableUserRole.MANAGER)
+    @Delete(':equipId/storage/:storeId')
+    RemoveEquipmentFromStorage(
+    @Param('equipId', ParseIntPipe) equipId: number,
+    @Param('storeId', ParseIntPipe) storeId: number
+    ){
+        return this.equipmentsService.RemoveEquipmentFromStorage(equipId, storeId);
+    }
 }

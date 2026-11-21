@@ -66,7 +66,7 @@ export class ChemicalsService {
 
     //delete (always soft delete for compliance and logs)
     async softDeleteChemical(id:number):Promise<ResponseDto>{
-        const chemical= await this.ChemicalRepo.softDelete(id);
+        const chemical= await this.ChemicalRepo.delete(id);
         if(!chemical.affected){throw new NotFoundException(`Chemical with ID: ${id} not found`);}
         return {message: `Chemical with ID:${id} has been removed`}
     }

@@ -41,7 +41,7 @@ export class CreateChemicalDto{
     @Min(0.1, {message:'Minimum quantity should be 0.1 of any unit'})
     @ApiProperty({
         description:'Current quantity of this chemical',
-        example:'Sulfuric Acid'
+        example:'10'
     })
     currentQty:number;
 

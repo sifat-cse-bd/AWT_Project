@@ -3,6 +3,15 @@ import { UserRole } from '../entities/user.entity.js';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateUserDto {
+
+    //entity and dto not matching so I added userId to test auth module
+    @IsString()
+    @IsNotEmpty({ message: 'Name should not be empty.' })
+    @MaxLength(100, { message: 'Name cannot exceed 100 characters.' })
+    @ApiProperty({ example: 'Enter User Name' })
+    userId: string;
+    //--
+
     @ApiProperty({ example: 'Enter User Name' })
     @IsString({ message: 'Name must be a valid string.' })
     @IsNotEmpty({ message: 'Name should not be empty.' })

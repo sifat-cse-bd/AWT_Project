@@ -17,7 +17,7 @@ export class UsersService {
     //FOR AUTH-----------------------------------
     async findByEmailForAuth(email: string) {
         return this.usersRepo.findOne({
-            where: { email },
+            where: { email, isActive:true},
             select: {
                 id:true,
                 userId: true,

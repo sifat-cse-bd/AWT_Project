@@ -1,11 +1,6 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, DeleteDateColumn, ManyToOne, JoinColumn, OneToMany, RelationId } from 'typeorm';
 import type { Relation } from 'typeorm';
-
-export enum UserRole {
-    MANAGER = 'MANAGER',
-    LAB_ASSISTANT = 'LAB_ASSISTANT',
-    STUDENT = 'STUDENT',
-}
+import { RegisterableUserRole as UserRole}  from '../dto/create-user.dto.js';
 
 @Entity('users')
 export class User {

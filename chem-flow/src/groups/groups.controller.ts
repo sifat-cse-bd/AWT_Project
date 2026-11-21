@@ -1,5 +1,10 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import type { AuthUser } from '../auth/auth-user.js';
+import { Roles } from '../auth/decorators/roles.decorator.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../auth/guards/roles.guard.js';
+import { RegisterableUserRole } from '../users/dto/create-user.dto.js';
 import { GroupsService } from './groups.service.js';
 import { CreateGroupDto } from './dto/create-goup.dto.js';
 import { UpdateGroupDto } from './dto/update-group.dto.js';
@@ -7,30 +12,35 @@ import { UpdateGroupDto } from './dto/update-group.dto.js';
 @ApiTags('groups')
 @ApiBearerAuth()
 @Controller('groups')
+@UseGuards(JwtAuthGuard)
 export class GroupsController {
   constructor(private readonly groupsService: GroupsService) {}
 
   @ApiOperation({
     summary: 'Create a lab group',
-    description: 'Creates a uniquely named group. Omit memberUserIds or send an empty array to create a solo group; maximum total membership is five including the creator.',
+    description: 'Only an authenticated STUDENT can create a group. Omit memberUserIds or send an empty array to create a solo group; maximum total membership is five including the creator.',
   })
   @ApiResponse({ status: 201, description: 'Group created with its membership list.' })
+  @ApiResponse({ status: 401, description: 'Authentication required.' })
+  @ApiResponse({ status: 403, description: 'Only STUDENT users can create groups.' })
   @ApiResponse({ status: 404, description: 'A member userId does not identify an active user.' })
   @ApiResponse({ status: 409, description: 'A group already uses this name.' })
   @ApiResponse({ status: 400, description: 'Invalid body, duplicate memberUserIds, or the group would exceed five total members including its creator.' })
   @Post()
-  create(@Body() dto: CreateGroupDto) {
-    return this.groupsService.create(dto);
+  @UseGuards(RolesGuard)
+  @Roles(RegisterableUserRole.STUDENT)
+  create(@Body() dto: CreateGroupDto, @Req() request: { user: AuthUser }) {
+    return this.groupsService.create(dto, request.user);
   }
 
   @ApiOperation({
     summary: 'List lab groups',
-    description: 'Returns groups with their members and creator details.',
+    description: 'MANAGER and ADMIN see all groups. Other authenticated users see only groups they belong to.',
   })
   @ApiResponse({ status: 200, description: 'Group list returned.' })
   @Get()
-  findAll() {
-    return this.groupsService.findAll();
+  findAll(@Req() request: { user: AuthUser }) {
+    return this.groupsService.findAll(request.user);
   }
 
   @ApiOperation({
@@ -42,10 +52,12 @@ export class GroupsController {
     description: 'Generated group identifier with UTC date and time',
     example: 'GRP-20261121-144720-472-9F3A2C10',
   })
+  @ApiResponse({ status: 401, description: 'Authentication required.' })
+  @ApiResponse({ status: 403, description: 'You are not a member of this group.' })
   @ApiResponse({ status: 404, description: 'Group not found.' })
   @Get(':groupId')
-  findOne(@Param('groupId') groupId: string) {
-    return this.groupsService.findOne(groupId);
+  findOne(@Param('groupId') groupId: string, @Req() request: { user: AuthUser }) {
+    return this.groupsService.findOne(groupId, request.user);
   }
 
   @ApiOperation({
@@ -55,14 +67,19 @@ export class GroupsController {
   @ApiParam({
     name: 'groupId',
     description: 'Generated group identifier with UTC date and time',
-    example: 'GRP-20261121-144720-472-9F3A2C10',
+    example: '',
   })
   @ApiResponse({ status: 404, description: 'Group or referenced active userId not found.' })
+  @ApiResponse({ status: 403, description: 'Only the creator, MANAGER, or ADMIN may update this group.' })
   @ApiResponse({ status: 409, description: 'A group already uses this name.' })
   @ApiResponse({ status: 400, description: 'Invalid body or the group would exceed five total members including its creator.' })
   @Patch(':groupId')
-  update(@Param('groupId') groupId: string, @Body() dto: UpdateGroupDto) {
-    return this.groupsService.update(groupId, dto);
+  update(
+    @Param('groupId') groupId: string,
+    @Body() dto: UpdateGroupDto,
+    @Req() request: { user: AuthUser },
+  ) {
+    return this.groupsService.update(groupId, dto, request.user);
   }
 
   @ApiOperation({
@@ -72,11 +89,12 @@ export class GroupsController {
   @ApiParam({
     name: 'groupId',
     description: 'Generated group identifier with UTC date and time',
-    example: 'GRP-20261121-144720-472-9F3A2C10',
+    example: '',
   })
   @ApiResponse({ status: 404, description: 'Group not found.' })
+  @ApiResponse({ status: 403, description: 'Only the creator, MANAGER, or ADMIN may delete this group.' })
   @Delete(':groupId')
-  remove(@Param('groupId') groupId: string) {
-    return this.groupsService.remove(groupId);
+  remove(@Param('groupId') groupId: string, @Req() request: { user: AuthUser }) {
+    return this.groupsService.remove(groupId, request.user);
   }
 }

@@ -1,6 +1,7 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Like, Repository } from 'typeorm';
+import type { AuthUser } from '../auth/auth-user.js';
 import { User, UserRole } from '../users/entities/user.entity.js';
 import { Group } from './entities/group.entity.js';
 import { Membership } from './entities/membership.entity.js';
@@ -15,15 +16,12 @@ export class GroupsService {
     @InjectRepository(Membership) private readonly membershipsRepo: Repository<Membership>,
   ) {}
 
- async create(dto: CreateGroupDto) {
-    // TODO [Auth]: Replace with authenticated user ID from token (e.g. principal.userId)
-    const createdByUserId = (dto as CreateGroupDto & { createdByUserId?: string }).createdByUserId
-      ?? dto.memberUserIds?.[0];
-
-    if (!createdByUserId) {
-      throw new BadRequestException('Creator userId is required');
+  async create(dto: CreateGroupDto, actor: AuthUser) {
+    if (actor.accountType !== 'USER' || actor.role !== UserRole.STUDENT) {
+      throw new ForbiddenException('Only authenticated students can create groups');
     }
 
+    const createdByUserId = actor.userId;
     const existingGroup = await this.repo.findOne({ where: { name: dto.name } });
     if (existingGroup) {
       throw new ConflictException('Group name already exists');
@@ -40,7 +38,7 @@ export class GroupsService {
     // group crate and save
     const group = await this.repo.save(
       this.repo.create({
-        groupId: this.generateGroupId(),
+        groupId: await this.generateGroupId(),
         name: dto.name,
         createdBy,
       }),
@@ -61,25 +59,36 @@ export class GroupsService {
     };
   }
 
-  async findAll() {
-    // TODO [Authorization]: Filter groups based on user role/membership when auth is added
-    return this.repo.find({
+  async findAll(actor: AuthUser) {
+    const options = {
       relations: { memberships: { user: true }, createdBy: true },
-      order: { createdAt: 'DESC' },
-    });
+      order: { createdAt: 'DESC' as const },
+    };
+    const groups = this.canViewAllGroups(actor)
+      ? await this.repo.find(options)
+      : await this.repo.find({
+          ...options,
+          where: [
+            { createdBy: { userId: actor.userId } },
+            { memberships: { user: { userId: actor.userId } } },
+          ],
+        });
+    return groups.map((group) => this.toResponse(group));
   }
 
-  async findOne(groupId: string) {
+  async findOne(groupId: string, actor: AuthUser) {
     const group = await this.find(groupId);
-
-    // TODO [Authorization]: Check if current user has permission to view this group
+    if (!this.canViewGroup(group, actor)) {
+      throw new ForbiddenException('You are not a member of this group');
+    }
     return this.toResponse(group);
   }
 
-  async update(groupId: string, dto: UpdateGroupDto) {
+  async update(groupId: string, dto: UpdateGroupDto, actor: AuthUser) {
     const group = await this.find(groupId);
-
-    // TODO [Authorization]: Allow only creator, MANAGER, or ADMIN to update the group
+    if (!this.canManageGroup(group, actor)) {
+      throw new ForbiddenException('Only the creator, MANAGER, or ADMIN may update this group');
+    }
 
     // old membership replace by new
     let members: User[] | undefined;
@@ -125,11 +134,11 @@ export class GroupsService {
     };
   }
 
-  // TODO [Auth]: Accept `principal: AuthPrincipal` again when authentication is enabled
-  async remove(groupId: string) {
+  async remove(groupId: string, actor: AuthUser) {
     const group = await this.find(groupId);
-
-    // TODO [Authorization]: Allow only creator, MANAGER, or ADMIN to delete the group
+    if (!this.canManageGroup(group, actor)) {
+      throw new ForbiddenException('Only the creator, MANAGER, or ADMIN may delete this group');
+    }
 
     await this.repo.softDelete(groupId);
     return {
@@ -151,8 +160,24 @@ export class GroupsService {
     return item;
   }
 
-  // TODO [Authorization]: Restore `assertCanManage(group, principal)` here later
-  // TODO [Authorization]: Restore `canView(group, principal)` here later
+  private canViewAllGroups(actor: AuthUser): boolean {
+    return actor.accountType === 'ADMIN' || actor.role === UserRole.MANAGER;
+  }
+
+  private canViewGroup(group: Group, actor: AuthUser): boolean {
+    if (this.canViewAllGroups(actor)) return true;
+    const createdByUserId = group.createdBy?.userId ?? group.createdByUserId;
+    return (
+      createdByUserId === actor.userId ||
+      Boolean(group.memberships?.some((membership) => membership.user?.userId === actor.userId))
+    );
+  }
+
+  private canManageGroup(group: Group, actor: AuthUser): boolean {
+    if (this.canViewAllGroups(actor)) return true;
+    const createdByUserId = group.createdBy?.userId ?? group.createdByUserId;
+    return createdByUserId === actor.userId;
+  }
 
   private async findStudent(userId: string) {
     const student = await this.usersRepo.findOne({

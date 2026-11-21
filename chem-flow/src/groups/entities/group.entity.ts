@@ -1,5 +1,5 @@
 
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryColumn, RelationId, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryColumn, RelationId, UpdateDateColumn } from 'typeorm';
 import type { Relation } from 'typeorm';
 import { User } from '../../users/entities/user.entity.js';
 import { Membership } from './membership.entity.js';
@@ -24,8 +24,8 @@ export class Group {
     @OneToMany(() => Membership, (membership) => membership.group)
     memberships?: Relation<Membership[]>;
 
-    @OneToMany(() => Booking, (booking) => booking.group)
-    bookings?: Relation<Booking[]>;
+    @OneToOne(() => Booking, (booking) => booking.group)
+    booking?: Relation<Booking>;
 
     @CreateDateColumn() 
     createdAt: Date;

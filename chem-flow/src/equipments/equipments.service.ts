@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { UsersService } from '../users/users.service.js';
 import { RegisterableUserRole } from '../users/dto/create-user.dto.js';
 import { StorageService } from '../storage/storage.service.js';
+import { Storage } from '../storage/entities/storage.entity.js';
 
 @Injectable()
 export class EquipmentsService 
@@ -212,5 +213,61 @@ export class EquipmentsService
       return await this.equipmentRepo.save(equipment);
   }
 
+  async GetEquipmentStorages(equipId: number): Promise<Storage[]>
+  {
+      const equipment = await this.equipmentRepo.findOne({
+          where: { equipId },
+          relations: { storages: true }
+      });
+
+      if (!equipment) {
+          throw new NotFoundException('Equipment not found.');
+      }
+
+      return equipment.storages;
+  }
+
+  async RemoveEquipmentFromStorage(equipId: number, storeId: number): Promise<Equipment>
+  {
+      const equipment = await this.equipmentRepo.findOne({
+          where: { equipId },
+          relations: { storages: true }
+      });
+
+      if (!equipment) {
+          throw new NotFoundException('Equipment not found.');
+      }
+
+      const assigned = equipment.storages.some(
+          storage => storage.storeId === storeId
+      );
+
+      if (!assigned) {
+          throw new NotFoundException(
+              'Equipment is not assigned to this storage.'
+          );
+      }
+
+      equipment.storages = equipment.storages.filter(
+          storage => storage.storeId !== storeId
+      );
+
+      return await this.equipmentRepo.save(equipment);
+  }
+
+  async GetEquipmentsByStorage(storeId: number): Promise<Equipment[]>
+  {
+      await this.storageService.getStorageById(storeId);
+
+      const equipments = await this.equipmentRepo.find({
+          where: {
+              storages: {
+                  storeId: storeId
+              }
+          }
+      });
+
+      return equipments;
+  }
 
 }

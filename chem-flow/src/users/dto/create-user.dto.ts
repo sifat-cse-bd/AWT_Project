@@ -1,6 +1,11 @@
 import { IsString, IsNotEmpty, IsEmail, IsEnum, MinLength, MaxLength, IsOptional, IsBoolean, Matches } from 'class-validator';
-import { UserRole } from '../entities/user.entity.js';
 import { ApiProperty } from '@nestjs/swagger';
+
+export enum RegisterableUserRole {
+    MANAGER = 'MANAGER',
+    LAB_ASSISTANT = 'LAB_ASSISTANT',
+    STUDENT = 'STUDENT',
+}
 
 export class CreateUserDto {
 
@@ -12,19 +17,19 @@ export class CreateUserDto {
     userId: string;
     //--
 
-    @ApiProperty({ example: 'Enter User Name' })
+    @ApiProperty({ example: 'Faruk Ahmed Sifat', description: 'Full name of the person using the lab.' })
     @IsString({ message: 'Name must be a valid string.' })
     @IsNotEmpty({ message: 'Name should not be empty.' })
     @MaxLength(100, { message: 'Name cannot exceed 100 characters.' })
     name: string;
 
-    @ApiProperty({ example: 'Enter User email address' })
+    @ApiProperty({ example: 'faruk@example.com', description: 'Unique email used to sign in.' })
     @IsEmail({}, { message: 'Please provide a valid email address.' })
     @IsNotEmpty({ message: 'Email should not be empty.' })
     @MaxLength(150, { message: 'Email cannot exceed 150 characters.' })
     email: string;
 
-    @ApiProperty({ example: 'Enter User Password' })
+    @ApiProperty({ example: 'LabUser1!', description: 'At least 6 characters, including uppercase, lowercase, and a number or symbol.' })
     @IsString({ message: 'Password must be a valid string.' })
     @IsNotEmpty({ message: 'Password should not be empty.' })
     @MinLength(6, { message: 'Password must be at least 6 characters long.' })
@@ -37,12 +42,12 @@ export class CreateUserDto {
     )
     password: string;
 
-    @ApiProperty({ example: 'Enter User Role' })
-    @IsEnum(UserRole, {
-        message: 'Role must be one of the following: ADMIN, MANAGER, TECHNICIAN, STUDENT.',
+    @ApiProperty({ enum: RegisterableUserRole, example: 'STUDENT', description: 'Available roles are MANAGER, LAB_ASSISTANT, STUDENT' })
+    @IsEnum(RegisterableUserRole, {
+        message: 'Role must be one of the following: MANAGER, LAB_ASSISTANT, STUDENT.',
     })
     @IsNotEmpty({ message: 'Role must not be empty.' })
-    role: UserRole;
+    role: RegisterableUserRole;
 
     @ApiProperty({
         description: 'Define whether user is active',

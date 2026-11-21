@@ -22,14 +22,14 @@ export class StorageController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RegisterableUserRole.MANAGER, RegisterableUserRole.STUDENT,RegisterableUserRole.LAB_ASSISTANT)
+  @Roles(RegisterableUserRole.MANAGER,RegisterableUserRole.LAB_ASSISTANT)
   @Get('list')
   getStorageList(@Query() pagination:PaginationDto): Promise<Storage[]> {
     return this.storageService.getStorageList(pagination);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RegisterableUserRole.MANAGER, RegisterableUserRole.STUDENT,RegisterableUserRole.LAB_ASSISTANT)
+  @Roles(RegisterableUserRole.MANAGER,RegisterableUserRole.LAB_ASSISTANT)
   @Get('get/:id')
   getStorageById(@Param('id', ParseIntPipe) id: number): Promise<Storage> {
     return this.storageService.getStorageById(id);

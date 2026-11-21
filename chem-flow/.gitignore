@@ -27,6 +27,9 @@ lerna-debug.log*
 *.spec.tsx
 *.spec.js
 *.spec.jsx
+!src/auth/auth.service.spec.ts
+!src/users/users.service.spec.ts
+!src/admin/admin.service.spec.ts
 
 # IDEs and editors
 /.idea

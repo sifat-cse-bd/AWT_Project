@@ -1,6 +1,6 @@
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, PrimaryColumn, PrimaryGeneratedColumn, Relation, RelationId, UpdateDateColumn } from "typeorm";
-import { Booking } from "../../bookings/entities/booking.entity.js";
-import { User } from "../../users/entities/user.entity.js";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import type { Relation } from 'typeorm';
+import { Storage } from '../../storage/entities/storage.entity.js';
 
 export enum HazardLevel{
    LOW='LOW', MEDIUM='MEDIUM', HIGH='HIGH', EXTREME='EXTREME'
@@ -26,6 +26,10 @@ export enum HazardLevel{
 
     @Column({type:'bool',default:true})
     availability:boolean;
+
+    @ManyToOne(() => Storage, p =>p.chemicals)
+    @JoinColumn({ name: 'storeId'})
+    storage: Relation<Storage>;
 
     // //RELATIONS CHEMICAL-(M)-------(1)-BOOKING
     // @Column({nullable:true})

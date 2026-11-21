@@ -128,4 +128,11 @@ export class EquipmentsController
     ){
         return this.equipmentsService.RemoveEquipmentFromStorage(equipId, storeId);
     }
+
+    @Get('by-storage/:storeId')
+    GetEquipmentsByStorage(
+    @Param('storeId', ParseIntPipe) storeId: number) 
+    {
+        return this.equipmentsService.GetEquipmentsByStorage(storeId);
+    }
 }

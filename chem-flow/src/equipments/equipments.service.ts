@@ -255,4 +255,19 @@ export class EquipmentsService
       return await this.equipmentRepo.save(equipment);
   }
 
+  async GetEquipmentsByStorage(storeId: number): Promise<Equipment[]>
+  {
+      await this.storageService.getStorageById(storeId);
+
+      const equipments = await this.equipmentRepo.find({
+          where: {
+              storages: {
+                  storeId: storeId
+              }
+          }
+      });
+
+      return equipments;
+  }
+
 }

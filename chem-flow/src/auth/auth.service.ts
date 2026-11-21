@@ -10,19 +10,23 @@ export class AuthService {
         private readonly jwtService:JwtService, //for token
     ){}
 
-    async login(email:string, pw:string){
-        const userExists = await this.usersService.findByEmailForAuth(email);
-        if(!userExists){throw new UnauthorizedException('Invalid email')}
+    async login(userId: string, password: string) {
+        const userExists = await this.usersService.findByUserIdForAuth(userId);
+        if (!userExists) {
+            throw new UnauthorizedException('Invalid user ID or password');
+        }
 
-        const checkPW = await bcrypt.compare(pw,userExists.passwordHash);
-        if(!checkPW){throw new UnauthorizedException('Invalid email or password')}
-        const payload= {
+        const checkPW = await bcrypt.compare(password, userExists.passwordHash);
+        if (!checkPW) {
+            throw new UnauthorizedException('Invalid user ID or password');
+        }
+        const payload = {
             userId: userExists.userId,
             role: userExists.role
         };
 
         return { 
-            accessToken: await this.jwtService.signAsync(payload),//encrp key generated using payload for every exiry period
+            accessToken: await this.jwtService.signAsync(payload),
         };
     }
 

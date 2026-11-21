@@ -5,7 +5,7 @@ import {ExtractJwt, Strategy} from "passport-jwt"
 import { Injectable } from "@nestjs/common";
 
 interface JwtPayLoad{
-    userID: string;
+    userId: string;
     role:RegisterableUserRole;
 }
 
@@ -22,7 +22,7 @@ export class JwtStrategy extends PassportStrategy(Strategy){
 
     validate(payload: JwtPayLoad){//checks if key is valid
         return{//if valid, return these as metadata for guards to verify
-            userId: payload.userID,
+            userId: payload.userId,
             role: payload.role
         }
     }

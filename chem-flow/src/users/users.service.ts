@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { User } from './entities/user.entity.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
+import * as bcrypt from  'bcrypt';
+
 
 @Injectable()
 export class UsersService {
@@ -11,6 +13,20 @@ export class UsersService {
         @InjectRepository(User)
         private usersRepo: Repository<User>,
     ) { }
+
+    //FOR AUTH
+    async findByEmailForAuth(email: string) {
+        return this.usersRepo.findOne({
+            where: { email },
+            select: {
+                id: true,
+                email: true,
+                passwordHash: true,
+                role: true,
+                isActive: true,
+            },
+        });
+    }
 
     async create(dto: CreateUserDto) {
         try {
@@ -21,27 +37,26 @@ export class UsersService {
             }
 
             //will be implement bcrypt for pass hashing
-            //
-            //
+            let hashedPass = await bcrypt.hash(dto.password,12); //ecryp key length 12
 
             const user = this.usersRepo.create({
                 name: dto.name,
                 email: dto.email,
-                passwordHash: dto.password, //will be use only hasshed password
+                passwordHash: hashedPass, //will be use only hasshed password
                 role: dto.role,
                 isActive: dto.isActive,
             });
 
-            const savedUser = this.usersRepo.save(user);
+            const savedUser = await this.usersRepo.save(user);
+
 
             //delete hashpassword for : not return in the response
             //
             //
-
-
+            const { passwordHash, ...userWithoutPass } = savedUser; //destructures to remove hashedpass
             return {
                 message: 'User created successfully',
-                data: savedUser,
+                data: userWithoutPass,
             };
         } catch (error) {
             throw error;
@@ -197,39 +212,41 @@ export class UsersService {
 
     //delete
     async remove(id: number) {
-    try {
-        // Validate ID
-        if (!id || !Number.isInteger(id) || id <= 0) {
-            throw new BadRequestException('Invalid user ID');
+        try {
+            // Validate ID
+            if (!id || !Number.isInteger(id) || id <= 0) {
+                throw new BadRequestException('Invalid user ID');
+            }
+
+            // Check if user exists
+            const user = await this.usersRepo.findOne({
+                where: { id },
+            });
+
+            if (!user) {
+                throw new NotFoundException(`User with ID ${id} not found`);
+            }
+
+            // Soft delete user
+            await this.usersRepo.softDelete(id);
+
+            return {
+                message: 'User deleted successfully',
+                id,
+            };
+
+        } catch (error) {
+            if (
+                error instanceof BadRequestException ||
+                error instanceof NotFoundException
+            ) {
+                throw error;
+            }
+
+            throw new InternalServerErrorException('Failed to delete user');
         }
-
-        // Check if user exists
-        const user = await this.usersRepo.findOne({
-            where: { id },
-        });
-
-        if (!user) {
-            throw new NotFoundException(`User with ID ${id} not found`);
-        }
-
-        // Soft delete user
-        await this.usersRepo.softDelete(id);
-
-        return {
-            message: 'User deleted successfully',
-            id,
-        };
-
-    } catch (error) {
-        if (
-            error instanceof BadRequestException ||
-            error instanceof NotFoundException
-        ) {
-            throw error;
-        }
-
-        throw new InternalServerErrorException('Failed to delete user');
     }
-}
+
+
 
 }

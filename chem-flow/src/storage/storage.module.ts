@@ -8,6 +8,6 @@ import { Storage } from './entities/storage.entity.js';
   imports: [TypeOrmModule.forFeature([Storage])],
   controllers: [StorageController],
   providers: [StorageService],
-  exports: [StorageService],
+  exports: [StorageService], 
 })
 export class StorageModule {}

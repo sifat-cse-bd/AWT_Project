@@ -14,6 +14,8 @@ import type { AuthUser } from '../auth/auth-user.js';
 import { CreateUserDto, RegisterableUserRole } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { User } from './entities/user.entity.js';
+import { UpdateUserSelfDto } from './dto/update-user-self.dto.js';
+import { UpdateUserAdminDto } from './dto/update-user-admin.dto.js';
 
 @Injectable()
 export class UsersService {
@@ -54,7 +56,20 @@ export class UsersService {
             isActive: user.isActive,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
-            deletedAt: user.deletedAt,
+            //deletedAt: user.deletedAt,
+        };
+    }
+
+        private sanitizeDeleted(user: User) {
+        return {
+            userId: user.userId,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            isActive: user.isActive,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+            deletedAt: user.deletedAt, 
         };
     }
 
@@ -102,7 +117,7 @@ export class UsersService {
         let users: User[];
         if (actor.accountType === 'ADMIN' && actor.role === 'ADMIN') {
             users = await this.usersRepo.find({
-                withDeleted: true,
+                withDeleted: false,
                 order: { createdAt: 'DESC' },
             });
         } else if (actor.role === RegisterableUserRole.MANAGER) {
@@ -118,6 +133,23 @@ export class UsersService {
             message: 'Users fetched successfully',
             count: users.length,
             data: users.map((user) => this.sanitize(user)),
+        };
+    }
+
+    async findDeletedUsers(actor: AuthUser) {
+        if (actor.accountType !== 'ADMIN' || actor.role !== 'ADMIN') {
+            throw new ForbiddenException('Only admin can view deleted users');
+        }
+
+        const users = await this.usersRepo.find({
+            withDeleted: true, 
+            order: { deletedAt: 'DESC' }, 
+        });
+
+        return {
+            message: 'Deleted users fetched successfully',
+            count: users.length,
+            data: users.map((user) => this.sanitizeDeleted(user)),
         };
     }
 
@@ -161,7 +193,7 @@ export class UsersService {
     }
     //Nahian
 
-    async update(userId: string, dto: UpdateUserDto, actor: AuthUser) {
+    /*async update(userId: string, dto: UpdateUserDto, actor: AuthUser) {
         if (!userId?.trim()) throw new BadRequestException('User ID is required');
         const user = await this.usersRepo.findOne({ where: { userId } });
         if (!user) throw new NotFoundException(`User ${userId} not found`);
@@ -191,7 +223,63 @@ export class UsersService {
 
         const updatedUser = await this.usersRepo.save(user);
         return { message: 'User updated successfully', data: this.sanitize(updatedUser) };
+    }*/
+
+  //user update only for self
+  async updateUserOnly(userId: string, dto: UpdateUserSelfDto, actor: AuthUser) {
+    if (!userId?.trim()) throw new BadRequestException('User ID is required');
+    
+    const user = await this.usersRepo.findOne({ where: { userId } });
+    if (!user) throw new NotFoundException(`User ${userId} not found`);
+
+  
+    if (actor.accountType !== 'USER' || actor.userId !== user.userId) {
+      throw new ForbiddenException('You can only update your own account');
     }
+
+    if (dto.email && dto.email !== user.email) {
+      const emailOwner = await this.usersRepo.findOne({
+        where: { email: dto.email },
+        withDeleted: true,
+      });
+      if (emailOwner) throw new ConflictException('Email already exists');
+    }
+
+    if (dto.name !== undefined) user.name = dto.name;
+    if (dto.email !== undefined) user.email = dto.email;
+    if (dto.password !== undefined) user.passwordHash = await bcrypt.hash(dto.password, 12);
+
+    const updatedUser = await this.usersRepo.save(user);
+    return { message: 'User updated successfully', data: this.sanitize(updatedUser) };
+  }
+
+  // Admin
+  async updateAdminOnly(userId: string, dto: UpdateUserAdminDto, actor: AuthUser) {
+    if (actor.accountType !== 'ADMIN' || actor.role !== 'ADMIN') {
+      throw new ForbiddenException('Only admin can perform this action');
+    }
+    if (!userId?.trim()) throw new BadRequestException('User ID is required');
+    
+    const user = await this.usersRepo.findOne({ where: { userId } });
+    if (!user) throw new NotFoundException(`User ${userId} not found`);
+
+    if (dto.email && dto.email !== user.email) {
+      const emailOwner = await this.usersRepo.findOne({
+        where: { email: dto.email },
+        withDeleted: true,
+      });
+      if (emailOwner) throw new ConflictException('Email already exists');
+    }
+
+    if (dto.name !== undefined) user.name = dto.name;
+    if (dto.email !== undefined) user.email = dto.email;
+    if (dto.password !== undefined) user.passwordHash = await bcrypt.hash(dto.password, 12);
+    if (dto.role !== undefined) user.role = dto.role;
+    if (dto.isActive !== undefined) user.isActive = dto.isActive;
+
+    const updatedUser = await this.usersRepo.save(user);
+    return { message: 'User updated successfully by Admin', data: this.sanitize(updatedUser) };
+  }
 
     async remove(userId: string, actor: AuthUser) {
         if (actor.accountType !== 'ADMIN' || actor.role !== 'ADMIN') {

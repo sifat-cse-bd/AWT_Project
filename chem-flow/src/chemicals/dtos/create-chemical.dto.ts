@@ -57,23 +57,23 @@ export class CreateChemicalDto{
     })
     availability:boolean;
 
-    @IsOptional()
-    @IsInt()
-    @ApiProperty({
-        description:'Whether the chemical is currently booked',
-        example:'1',
-        required:false,
-        nullable:true
-    })
-    bookingId?:number|null;
+    // @IsOptional()
+    // @IsInt()
+    // @ApiProperty({
+    //     description:'Whether the chemical is currently booked',
+    //     example:'1',
+    //     required:false,
+    //     nullable:true
+    // })
+    // bookingId?:number|null;
 
-    @IsOptional()
-    @IsInt()
-    @ApiProperty({
-        description:'userId of Lab Assistant responsible for this chemical',
-        example:'LAB-001',
-        required:false,
-        nullable:true
-    })
-    userId?:number|null;
+    // @IsOptional()
+    // @IsInt()
+    // @ApiProperty({
+    //     description:'userId of Lab Assistant responsible for this chemical',
+    //     example:'LAB-001',
+    //     required:false,
+    //     nullable:true
+    // })
+    // userId?:number|null;
 }

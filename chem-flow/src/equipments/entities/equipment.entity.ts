@@ -1,4 +1,5 @@
 import {Entity, CreateDateColumn, Column, PrimaryGeneratedColumn, UpdateDateColumn, DeleteDateColumn, ManyToOne, JoinColumn, } from 'typeorm';
+import type { Relation } from 'typeorm';
 
 import {User} from '../../users/entities/user.entity.js';
 
@@ -37,5 +38,5 @@ export class Equipment
         onDelete: 'CASCADE',
     })
     @JoinColumn({ name: 'userId', referencedColumnName: 'userId' })
-    labAssistant: User;
+    labAssistant: Relation<User>;
 }

@@ -16,54 +16,44 @@ export enum HazardLevel{
     name:string;
 
     @Column({type:'text', nullable:true})
-    description?:string;
+    description:string|null;
 
     @Column({type:'enum', enum:HazardLevel, default:HazardLevel.LOW})
     hazardLevel:HazardLevel;
 
-   //  @Column({type:'integer'})
-   //  currentQty:number;
-
-   //  @Column({type:'integer'})
-   //  minStockQty:number;
-
-   //  @Column({type:'varchar', length:15})
-   //  unit:string;
-
-    @Column({type:'date'})
+    @Column({type:'date'})//"YYYY-MM-DD"
     expiryDate:string;
 
     @Column({type:'bool',default:true})
     availability:boolean;
 
-    //RELATIONS CHEMICAL-(M)-------(1)-BOOKING
-    @Column({nullable:true})
-    bookingId:number|null;
+    // //RELATIONS CHEMICAL-(M)-------(1)-BOOKING
+    // @Column({nullable:true})
+    // bookingId:number|null;
 
-    @ManyToOne(() => Booking, (booking) => booking.chemicals,{ 
-      nullable: true, 
-      onDelete: 'SET NULL' 
-    })
-    @JoinColumn({ name:'bookingId'})
-    booking?: Relation<Booking> | null;
+    // @ManyToOne(() => Booking, (booking) => booking.chemicals,{ 
+    //   nullable: true, 
+    //   onDelete: 'SET NULL' 
+    // })
+    // @JoinColumn({ name:'bookingId'})
+    // booking?: Relation<Booking> | null;
 
-    //RELATIONS CHEMICAL-(M)-------(1)-USER
-    @Column({nullable:true})
-    userId:number|null;
+    // //RELATIONS CHEMICAL-(M)-------(1)-USER
+    // @Column({nullable:true})
+    // userId:number|null;
 
-    @ManyToOne(() => User, (user) => user.chemicals,{ 
-      nullable: true, 
-      onDelete: 'SET NULL' 
-    })
-    @JoinColumn({ name:'userId'})
-    labAssistant?: Relation<User> | null;
+    // @ManyToOne(() => User, (user) => user.chemicals,{ 
+    //   nullable: true, 
+    //   onDelete: 'SET NULL' 
+    // })
+    // @JoinColumn({ name:'userId'})
+    // labAssistant?: Relation<User> | null;
 
-    //RELATIONS CHEMICAL-(M)-------(1)-STORAGELOCATION
-    @ManyToMany(()=>StorageLocation,(storage)=>storage.chemicals)
-    @JoinTable({ name: 'chemicalStorage', joinColumn: { name: 'chemId', referenceColumn: 'chemId' }, inverseJoinColumn: { name: 'storeId', referenceColumn: 'storeId' } })
-    storages?: Relation<StorageLocation[]>;
+    // //RELATIONS CHEMICAL-(M)-------(1)-STORAGELOCATION
+    // @ManyToMany(()=>StorageLocation,(storage)=>storage.chemicals)
+    // @JoinTable({ name: 'chemicalStorage', joinColumn: { name: 'chemId', referenceColumn: 'chemId' }, inverseJoinColumn: { name: 'storeId', referenceColumn: 'storeId' } })
+    // storages?: Relation<StorageLocation[]>;
     
-
     //TIMESTAMPs
     @CreateDateColumn({ type: 'timestamptz' }) createdAt: Date;
     @UpdateDateColumn({ name: 'updateAt', type: 'timestamptz' }) updateAt: Date;

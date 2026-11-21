@@ -43,13 +43,13 @@ export class ChemicalsController {
     return await this.chemicalsService.softDeleteChemical(id);
   }
 
-  @Get('low-stock')
-  async getLowStockList():Promise<CreateChemicalDto[]>{
-    return await this.chemicalsService.getLowStockList();
-  }
+  // @Get('low-stock')
+  // async getLowStockList():Promise<CreateChemicalDto[]>{
+  //   return await this.chemicalsService.getLowStockList();
+  // }
 
-  @Post('deduct/:id/:amount')
-  async deductChemicalQty(@Param('id',ParseIntPipe) id:number, @Param('amount',ParseIntPipe) amount:number):Promise<CreateChemicalDto>{
-    return await this.chemicalsService.deductChemicalQty(id,amount);
-  }
+  // @Post('deduct/:id/:amount')
+  // async deductChemicalQty(@Param('id',ParseIntPipe) id:number, @Param('amount',ParseIntPipe) amount:number):Promise<CreateChemicalDto>{
+  //   return await this.chemicalsService.deductChemicalQty(id,amount);
+  // }
 }

@@ -6,7 +6,7 @@ import { Membership } from './membership.entity.js';
 import { Booking } from '../../bookings/entities/booking.entity.js';
 import { GroupedObservable } from 'rxjs';
 
-@Entity('Group')
+@Entity('groups')
 export class Group {
     @PrimaryColumn({ type: 'varchar', length: 60 }) 
     groupId: string;

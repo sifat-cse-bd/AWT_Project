@@ -60,26 +60,34 @@ export class GroupsService {
   }
 
   async findAll(actor: AuthUser) {
-    const options = {
-      relations: { memberships: { user: true }, createdBy: true },
-      order: { createdAt: 'DESC' as const },
-    };
-    const groups = this.canViewAllGroups(actor)
-      ? await this.repo.find(options)
-      : await this.repo.find({
-          ...options,
-          where: [
-            { createdBy: { userId: actor.userId } },
-            { memberships: { user: { userId: actor.userId } } },
-          ],
-        });
+    const query = this.groupQuery().orderBy('group.createdAt', 'DESC');
+
+    if (actor.accountType === 'USER' && actor.role === UserRole.STUDENT) {
+      query.andWhere(
+        '(creator.userId = :userId OR member.userId = :userId)',
+        { userId: actor.userId },
+      );
+    } else if (actor.accountType === 'USER' && actor.role === UserRole.LAB_ASSISTANT) {
+      query
+        .andWhere('booking.userId IS NOT NULL')
+        .andWhere('booking.cancelAt IS NULL');
+    } else if (!this.canViewAllGroups(actor)) {
+      throw new ForbiddenException('You are not allowed to view groups');
+    }
+
+    const groups = await query.getMany();
     return groups.map((group) => this.toResponse(group));
   }
 
   async findOne(groupId: string, actor: AuthUser) {
-    const group = await this.find(groupId);
+    const group = await this.groupQuery()
+      .where('group.groupId = :groupId', { groupId })
+      .getOne();
+    if (!group) {
+      throw new NotFoundException(`Group ${groupId} not found`);
+    }
     if (!this.canViewGroup(group, actor)) {
-      throw new ForbiddenException('You are not a member of this group');
+      throw new ForbiddenException('You are not allowed to view this group');
     }
     return this.toResponse(group);
   }
@@ -152,7 +160,7 @@ export class GroupsService {
   private async find(groupId: string) {
     const item = await this.repo.findOne({
       where: { groupId },
-      relations: { memberships: { user: true }, createdBy: true },
+      relations: { memberships: { user: true }, createdBy: true, booking: true },
     });
     if (!item) {
       throw new NotFoundException(`Group ${groupId} not found`);
@@ -161,16 +169,37 @@ export class GroupsService {
   }
 
   private canViewAllGroups(actor: AuthUser): boolean {
-    return actor.accountType === 'ADMIN' || actor.role === UserRole.MANAGER;
+    return (
+      (actor.accountType === 'ADMIN' && actor.role === 'ADMIN') ||
+      (actor.accountType === 'USER' && actor.role === UserRole.MANAGER)
+    );
   }
 
   private canViewGroup(group: Group, actor: AuthUser): boolean {
     if (this.canViewAllGroups(actor)) return true;
+
+    if (actor.accountType === 'USER' && actor.role === UserRole.LAB_ASSISTANT) {
+      return Boolean(group.booking?.userId && !group.booking.cancelAt);
+    }
+    if (actor.accountType !== 'USER' || actor.role !== UserRole.STUDENT) {
+      return false;
+    }
+
     const createdByUserId = group.createdBy?.userId ?? group.createdByUserId;
     return (
       createdByUserId === actor.userId ||
       Boolean(group.memberships?.some((membership) => membership.user?.userId === actor.userId))
     );
+  }
+
+  private groupQuery() {
+    return this.repo
+      .createQueryBuilder('group')
+      .leftJoinAndSelect('group.memberships', 'membership')
+      .leftJoinAndSelect('membership.user', 'member')
+      .leftJoinAndSelect('group.createdBy', 'creator')
+      .leftJoinAndSelect('group.booking', 'booking')
+      .distinct(true);
   }
 
   private canManageGroup(group: Group, actor: AuthUser): boolean {

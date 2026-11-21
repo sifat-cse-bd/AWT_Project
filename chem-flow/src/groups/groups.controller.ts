@@ -35,7 +35,7 @@ export class GroupsController {
 
   @ApiOperation({
     summary: 'List lab groups',
-    description: 'MANAGER and ADMIN see all groups. Other authenticated users see only groups they belong to.',
+    description: 'Students see groups they belong to; MANAGER and ADMIN see all groups; LAB_ASSISTANT sees groups with an active approved booking.',
   })
   @ApiResponse({ status: 200, description: 'Group list returned.' })
   @Get()
@@ -45,7 +45,7 @@ export class GroupsController {
 
   @ApiOperation({
     summary: 'Get group details',
-    description: 'Returns a group by its groupId primary key and its current member list.',
+    description: 'Students may view groups they belong to; MANAGER and ADMIN may view any group; LAB_ASSISTANT may view groups with an active approved booking.',
   })
   @ApiParam({
     name: 'groupId',

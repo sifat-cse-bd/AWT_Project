@@ -5,10 +5,11 @@ import { UsersModule } from '../users/users.module.js';
 import{JwtModule} from '@nestjs/jwt';
 import{PassportModule} from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { RolesGuard } from './guards/roles.guard.js';
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, RolesGuard],
   imports: [UsersModule, ConfigModule, PassportModule, JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { CreateEquipmentDto } from './dto/create-equipment.dto.js';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto.js';
-import { Equipment, EquipmentStatus } from './entities/equipment.entity.js';
+import { Equipment } from './entities/equipment.entity.js';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -15,7 +15,7 @@ export class EquipmentsService
 
   async CreateEquipment(CreateEQP: CreateEquipmentDto): Promise<Equipment>
   {
-    if (CreateEQP.availableQty > CreateEQP.totalQty) 
+    if (CreateEQP.availability > CreateEQP.totalQty) 
       {
         throw new BadRequestException('Available Quantity cannot exceed Total Quantity.');
       }
@@ -32,11 +32,11 @@ export class EquipmentsService
         {
           select:
           {
-            id: true,
+            equipId: true,
             name: true,
+            description: true,
             totalQty: true,
-            availableQty: true,
-            status: true,
+            availability: true,
             createdAt: true,
           },
           order: {createdAt: 'DESC'},
@@ -66,14 +66,14 @@ export class EquipmentsService
        const equipment = await this.equipmentRepo.findOne
        (
         { 
-          where: { id },
+          where: { equipId: id },
           select:
           {
-            id: true,
+            equipId: true,
             name: true,
+            description: true,
             totalQty: true,
-            availableQty: true,
-            status: true,
+            availability: true,
             createdAt: true,
           }
         }
@@ -92,24 +92,14 @@ export class EquipmentsService
     
   }
 
-  async FindByStatus(status: EquipmentStatus): Promise<Equipment[]>
-  {
-    const equipments = await this.equipmentRepo.find({ where: { status } });
-    if (!equipments || equipments.length === 0)
-      {
-        throw new NotFoundException(`No equipments found with status: ${status}`);
-      }
-    return equipments;
-  }
-
   async UpdateEquipment(id: number, updateEQP: UpdateEquipmentDto): Promise<Equipment>
   {
     const equipment = await this.GetEquipmentById(id);
 
     const totalQty = updateEQP.totalQty ?? equipment.totalQty;
-    const availableQty = updateEQP.availableQty ?? equipment.availableQty;
+    const availability = updateEQP.availability ?? equipment.availability;
 
-    if(availableQty > totalQty)
+    if(availability > totalQty)
       {
         throw new BadRequestException('Available Quantity cannot exceed Total Quantity.');
       }
@@ -123,14 +113,16 @@ export class EquipmentsService
   {
     const equipment = await this.GetEquipmentById(id);
 
-    if(equipment.status === EquipmentStatus.OK && equipment.availableQty >= requestedQTY)
-      {
-        return `Equipment with ID ${id} is available for the requested quantity of ${requestedQTY}.`;
-      }
     if(requestedQTY < 1)
       {
         throw new BadRequestException('Requested quantity must be at least 1.');
       }  
+    
+    if(equipment.availability >= requestedQTY)
+      {
+        return `Equipment with ID ${id} is available for the requested quantity of ${requestedQTY}.`;
+      }
+    
     return `Equipment with ID ${id} is not available for now.`;
   }
 

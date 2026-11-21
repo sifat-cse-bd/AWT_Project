@@ -3,7 +3,7 @@ import { EquipmentsService } from './equipments.service.js';
 import { CreateEquipmentDto } from './dto/create-equipment.dto.js';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto.js';
 import {ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
-import { EquipmentStatus } from './entities/equipment.entity.js';
+
 
 @ApiTags('equipments')
 @Controller('equipments')
@@ -28,14 +28,6 @@ export class EquipmentsController
     return this.equipmentsService.GetAllEquipments();
   }
 
-  @ApiOperation({ summary: 'Get equipments by status', description: 'Retrieves a list of equipments filtered by their status.' })
-  @ApiResponse({ status: 200, description: 'List of equipments with the specified status retrieved successfully.' })
-  @ApiResponse({ status: 404, description: 'No equipments found with the specified status.' })
-  @Get('status/:status')
-  findByStatus(@Param('status') status: EquipmentStatus) 
-  {
-    return this.equipmentsService.FindByStatus(status);
-  }
 
   @ApiOperation({ summary: 'Check equipment availability', description: 'Checks if an equipment is available for a requested quantity.' })
   @ApiResponse({ status: 200, description: 'Availability information retrieved successfully.' })

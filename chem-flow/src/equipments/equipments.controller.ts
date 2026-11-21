@@ -128,7 +128,11 @@ export class EquipmentsController
     ){
         return this.equipmentsService.RemoveEquipmentFromStorage(equipId, storeId);
     }
-
+    @ApiOperation({ summary: 'Get equipments by storage', description: 'Only administrators, managers and lab assistants can retrieve the equipments associated with a specific storage section.' })
+    @ApiResponse({ status: 200, description: 'Equipments for the storage section retrieved successfully.' })
+    @ApiResponse({ status: 404, description: 'Storage section not found.' })
+    @ApiResponse({status: 403, description: 'Forbidden. Only administrators, managers and lab assistants can retrieve the equipments associated with a specific storage section.'})
+    @Roles('ADMIN', RegisterableUserRole.MANAGER, RegisterableUserRole.LAB_ASSISTANT)
     @Get('by-storage/:storeId')
     GetEquipmentsByStorage(
     @Param('storeId', ParseIntPipe) storeId: number) 

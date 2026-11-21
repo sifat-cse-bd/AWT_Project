@@ -12,5 +12,5 @@ export class PaginationDto{
     @IsInt()
     @Min(1)
     @Max(50)
-    limit=5;
+    limit=2;
 }

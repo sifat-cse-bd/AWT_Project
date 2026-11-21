@@ -9,7 +9,9 @@ import { Roles } from '../auth/decorators/roles.decorator.js';
 import { RegisterableUserRole } from '../users/dto/create-user.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth()
 @Controller('storage')
 export class StorageController {
   constructor(private readonly storageService: StorageService) {}
@@ -22,14 +24,14 @@ export class StorageController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RegisterableUserRole.MANAGER, RegisterableUserRole.STUDENT,RegisterableUserRole.LAB_ASSISTANT)
+  @Roles(RegisterableUserRole.MANAGER,RegisterableUserRole.LAB_ASSISTANT)
   @Get('list')
   getStorageList(@Query() pagination:PaginationDto): Promise<Storage[]> {
     return this.storageService.getStorageList(pagination);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RegisterableUserRole.MANAGER, RegisterableUserRole.STUDENT,RegisterableUserRole.LAB_ASSISTANT)
+  @Roles(RegisterableUserRole.MANAGER,RegisterableUserRole.LAB_ASSISTANT)
   @Get('get/:id')
   getStorageById(@Param('id', ParseIntPipe) id: number): Promise<Storage> {
     return this.storageService.getStorageById(id);

@@ -40,7 +40,7 @@ export class GroupsService {
     // group crate and save
     const group = await this.repo.save(
       this.repo.create({
-        groupId: this.generateGroupId(),
+        groupId: await this.generateGroupId(),
         name: dto.name,
         createdBy,
       }),

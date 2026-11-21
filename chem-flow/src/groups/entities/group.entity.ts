@@ -3,8 +3,6 @@ import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, ManyToO
 import type { Relation } from 'typeorm';
 import { User } from '../../users/entities/user.entity.js';
 import { Membership } from './membership.entity.js';
-import { Booking } from '../../bookings/entities/booking.entity.js';
-import { GroupedObservable } from 'rxjs';
 
 @Entity('Group')
 export class Group {
@@ -23,9 +21,6 @@ export class Group {
 
     @OneToMany(() => Membership, (membership) => membership.group)
     memberships?: Relation<Membership[]>;
-
-    @OneToMany(() => Booking, (booking) => booking.group)
-    bookings?: Relation<Booking[]>;
 
     @CreateDateColumn() 
     createdAt: Date;

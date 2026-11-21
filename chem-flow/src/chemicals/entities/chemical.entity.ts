@@ -1,28 +1,61 @@
-import { Column, Entity, PrimaryColumn } from "typeorm";
-import { HazardLevel } from "../dtos/create-chemical.dto.js";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, PrimaryColumn, PrimaryGeneratedColumn, Relation, RelationId, UpdateDateColumn } from "typeorm";
+import { Booking } from "../../bookings/entities/booking.entity.js";
+import { User } from "../../users/entities/user.entity.js";
 
+export enum HazardLevel{
+   LOW='LOW', MEDIUM='MEDIUM', HIGH='HIGH', EXTREME='EXTREME'
+ }
  
  @Entity('chemicals')
  export class Chemical{
 
-    @PrimaryColumn({unique:true, type:'integer'})
-    id:number;
+    @PrimaryGeneratedColumn()
+    chemId:number;
 
-    @Column({type:'varchar', length:50})
+    @Column({type:'varchar'})
     name:string;
 
-    @Column({type:'enum', enum:HazardLevel})
+    @Column({type:'text', nullable:true})
+    description:string|null;
+
+    @Column({type:'enum', enum:HazardLevel, default:HazardLevel.LOW})
     hazardLevel:HazardLevel;
 
-    @Column({type:'integer'})
-    currentQty:number;
-
-    @Column({type:'integer'})
-    minStockQty:number;
-
-    @Column({type:'varchar', length:15})
-    unit:string;
-
-    @Column({type:'date'})
+    @Column({type:'date'})//"YYYY-MM-DD"
     expiryDate:string;
+
+    @Column({type:'bool',default:true})
+    availability:boolean;
+
+    // //RELATIONS CHEMICAL-(M)-------(1)-BOOKING
+    // @Column({nullable:true})
+    // bookingId:number|null;
+
+    // @ManyToOne(() => Booking, (booking) => booking.chemicals,{ 
+    //   nullable: true, 
+    //   onDelete: 'SET NULL' 
+    // })
+    // @JoinColumn({ name:'bookingId'})
+    // booking?: Relation<Booking> | null;
+
+    // //RELATIONS CHEMICAL-(M)-------(1)-USER
+    // @Column({nullable:true})
+    // userId:number|null;
+
+    // @ManyToOne(() => User, (user) => user.chemicals,{ 
+    //   nullable: true, 
+    //   onDelete: 'SET NULL' 
+    // })
+    // @JoinColumn({ name:'userId'})
+    // labAssistant?: Relation<User> | null;
+
+    // //RELATIONS CHEMICAL-(M)-------(1)-STORAGELOCATION
+    // @ManyToMany(()=>StorageLocation,(storage)=>storage.chemicals)
+    // @JoinTable({ name: 'chemicalStorage', joinColumn: { name: 'chemId', referenceColumn: 'chemId' }, inverseJoinColumn: { name: 'storeId', referenceColumn: 'storeId' } })
+    // storages?: Relation<StorageLocation[]>;
+    
+    //TIMESTAMPs
+    @CreateDateColumn({ type: 'timestamptz' }) createdAt: Date;
+    @UpdateDateColumn({ name: 'updateAt', type: 'timestamptz' }) updateAt: Date;
+    @DeleteDateColumn({ name: 'deleteAt', type: 'timestamptz', nullable: true }) deleteAt?: Date;
  }

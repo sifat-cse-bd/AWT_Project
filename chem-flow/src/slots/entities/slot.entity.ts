@@ -54,4 +54,20 @@ export class Slot {
 
   @DeleteDateColumn({ nullable: true })
   deletedAt?: Date;
+
+  // --- Relations ---
+  @ManyToOne(() => Booking, (booking) => booking.slots, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'bookingId', referencedColumnName: 'bookingId' })
+  booking?: Relation<Booking> | null;
+
+  @ManyToOne(() => Admin, (admin) => admin.slots, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'adminId', referencedColumnName: 'adminId' })
+  admin?: Relation<Admin> | null;
 }

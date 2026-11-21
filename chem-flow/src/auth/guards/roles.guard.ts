@@ -6,9 +6,9 @@ import { ROLES_KEY } from "../decorators/roles.decorator.js";
 
 @Injectable()
 export class RolesGuard implements CanActivate{
-    constructor(private readonly relfector:Reflector){}
+    constructor(private readonly reflector:Reflector){}
     canActivate(context: ExecutionContext): boolean{
-        const availableRoles= this.relfector.getAllAndOverride<RegisterableUserRole[]>(
+        const availableRoles= this.reflector.getAllAndOverride<RegisterableUserRole[]>(
             ROLES_KEY, 
             [context.getHandler(), context.getClass()]
         );

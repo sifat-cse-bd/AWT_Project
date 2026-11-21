@@ -18,14 +18,13 @@ export class AuthService {
         if(!checkPW){throw new UnauthorizedException('Invalid email or password')}
         console.log(userExists);
         const payload= {
-            userID: userExists.userId,
-            userRole: userExists.role
+            userId: userExists.userId,
+            role: userExists.role
         };
 
         return { 
             accessToken: await this.jwtService.signAsync(payload),//for encoding
         };
     }
-
 
 }

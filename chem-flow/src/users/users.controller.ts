@@ -1,10 +1,14 @@
-import { Controller, Post, Get, Body, Param, Patch, Put, Delete, ParseIntPipe } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Patch, Put, Delete, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
-import { CreateUserDto } from './dto/create-user.dto.js';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { CreateUserDto, RegisterableUserRole } from './dto/create-user.dto.js';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../auth/guards/roles.guard.js';
+import { Roles } from '../auth/decorators/roles.decorator.js';
 
 @ApiTags('users')
+@ApiBearerAuth()
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) { }
@@ -13,6 +17,8 @@ export class UsersController {
   @ApiResponse({ status: 201, description: 'The user has been successfully created.' })
   @ApiResponse({ status: 400, description: 'Bad Request / Validation failed.' })
   @Post('/create')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RegisterableUserRole.MANAGER)
   create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);
   }

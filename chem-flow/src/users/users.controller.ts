@@ -1,56 +1,107 @@
-import { Controller, Post, Get, Body, Param, Patch, Put, Delete, ParseIntPipe, UseGuards } from '@nestjs/common';
-import { UsersService } from './users.service.js';
-import { UpdateUserDto } from './dto/update-user.dto.js';
-import { CreateUserDto, RegisterableUserRole } from './dto/create-user.dto.js';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { AuthUser } from '../auth/auth-user.js';
+import { Roles } from '../auth/decorators/roles.decorator.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
-import { Roles } from '../auth/decorators/roles.decorator.js';
+import { CreateUserDto } from './dto/create-user.dto.js';
+import { UpdateUserDto } from './dto/update-user.dto.js';
+import { UsersService } from './users.service.js';
 
 @ApiTags('users')
-@ApiBearerAuth()
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
-  @ApiOperation({ summary: 'Create a new user', description: 'Registers a new user in the system with valid credentials.' })
-  @ApiResponse({ status: 201, description: 'The user has been successfully created.' })
-  @ApiResponse({ status: 400, description: 'Bad Request / Validation failed.' })
-  @Post('/create')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Admin creates a user account',
+    description: 'Only ADMIN may create STUDENT, MANAGER, or LAB_ASSISTANT accounts.',
+  })
+  @ApiResponse({ status: 201, description: 'User created successfully.' })
+  @ApiResponse({ status: 401, description: 'Authentication required.' })
+  @ApiResponse({ status: 403, description: 'Only ADMIN may create users.' })
+  @Post('create')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RegisterableUserRole.MANAGER)
-  create(@Body() dto: CreateUserDto) {
-    return this.usersService.create(dto);
+  @Roles('ADMIN')
+  create(@Body() dto: CreateUserDto, @Req() request: { user: AuthUser }) {
+    return this.usersService.create(dto, request.user);
   }
 
-  @ApiOperation({ summary: 'Get all users', description: 'Retrieves a list of all registered users.' })
-  @ApiResponse({ status: 200, description: 'List of users retrieved successfully.' })
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'List visible users',
+    description: 'ADMIN sees all records; MANAGER sees LAB_ASSISTANT accounts. Other users must search by their own userId.',
+  })
+  @ApiResponse({ status: 200, description: 'Visible users retrieved successfully.' })
+  @ApiResponse({ status: 403, description: 'This role cannot list users.' })
   @Get()
-  findAll() {
-    return this.usersService.findAll();
+  @UseGuards(JwtAuthGuard)
+  findAll(@Req() request: { user: AuthUser }) {
+    return this.usersService.findAll(request.user);
   }
 
-  @ApiOperation({ summary: 'Get a user by ID', description: 'Retrieval of a specific user using their unique ID.' })
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get a user by public ID',
+    description: 'Users can view their own profile; MANAGER can also view LAB_ASSISTANT profiles; ADMIN can view every record.',
+  })
+  @ApiParam({ name: 'userId', example: 'STD-001', description: 'Public user ID, not the internal numeric database ID.' })
   @ApiResponse({ status: 200, description: 'User found successfully.' })
+  @ApiResponse({ status: 403, description: 'You are not allowed to view this user.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
-  @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.usersService.findOne(id);
+  @Get(':userId')
+  @UseGuards(JwtAuthGuard)
+  findOne(@Param('userId') userId: string, @Req() request: { user: AuthUser }) {
+    return this.usersService.findOne(userId, request.user);
   }
 
-  @ApiOperation({ summary: 'Update user details', description: 'Updates specific fields of an existing user by ID.' })
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Update account details',
+    description: 'Every user may update their own name, email, and password. Only ADMIN may change roles or account status.',
+  })
+  @ApiParam({ name: 'userId', example: 'STD-001', description: 'Public user ID.' })
   @ApiResponse({ status: 200, description: 'User updated successfully.' })
-  @ApiResponse({ status: 404, description: 'User not found.' })
-  @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
-    return this.usersService.update(id, dto);
+  @ApiResponse({ status: 403, description: 'Only the account owner or ADMIN may update this account.' })
+  @Patch(':userId')
+  @UseGuards(JwtAuthGuard)
+  update(
+    @Param('userId') userId: string,
+    @Body() dto: UpdateUserDto,
+    @Req() request: { user: AuthUser },
+  ) {
+    return this.usersService.update(userId, dto, request.user);
   }
 
-  @ApiOperation({ summary: 'Delete a user', description: 'Removes a user from the system by their unique ID.' })
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Soft-delete a user account',
+    description: 'Only ADMIN may deactivate and soft-delete an account. The record is preserved.',
+  })
+  @ApiParam({ name: 'userId', example: 'STD-001', description: 'Public user ID.' })
   @ApiResponse({ status: 200, description: 'User deleted successfully.' })
-  @ApiResponse({ status: 404, description: 'User not found.' })
-  @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.usersService.remove(id);
+  @ApiResponse({ status: 403, description: 'Only ADMIN may delete user accounts.' })
+  @Delete(':userId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  remove(@Param('userId') userId: string, @Req() request: { user: AuthUser }) {
+    return this.usersService.remove(userId, request.user);
   }
 }

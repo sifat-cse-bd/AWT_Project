@@ -1,254 +1,193 @@
-import { Injectable, NotFoundException, ConflictException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import {
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    Injectable,
+    NotFoundException,
+    UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from './entities/user.entity.js';
-import { CreateUserDto } from './dto/create-user.dto.js';
+import * as bcrypt from 'bcrypt';
+import { Like, Repository } from 'typeorm';
+import { Admin } from '../admin/entities/admin.entity.js';
+import type { AuthUser } from '../auth/auth-user.js';
+import { CreateUserDto, RegisterableUserRole } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
-import * as bcrypt from  'bcrypt';
-
+import { User } from './entities/user.entity.js';
 
 @Injectable()
 export class UsersService {
     constructor(
         @InjectRepository(User)
-        private usersRepo: Repository<User>,
-    ) { }
+        private readonly usersRepo: Repository<User>,
+        @InjectRepository(Admin)
+        private readonly adminsRepo: Repository<Admin>,
+    ) {}
 
-    //FOR AUTH-----------------------------------
-    async findByEmailForAuth(email: string) {
+    private async generateUserId(role: RegisterableUserRole): Promise<string> {
+        const prefixes: Record<RegisterableUserRole, string> = {
+            STUDENT: 'STD',
+            MANAGER: 'MNG',
+            LAB_ASSISTANT: 'LAS',
+        };
+        const prefix = prefixes[role];
+        const users = await this.usersRepo.find({
+            where: { userId: Like(`${prefix}-%`) },
+            withDeleted: true,
+            select: { userId: true },
+        });
+
+        let nextNumber = 1;
+        for (const user of users) {
+            const match = new RegExp(`^${prefix}-(\\d+)$`).exec(user.userId);
+            if (match) nextNumber = Math.max(nextNumber, Number(match[1]) + 1);
+        }
+        return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+    }
+
+    private sanitize(user: User) {
+        return {
+            userId: user.userId,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            isActive: user.isActive,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+            deletedAt: user.deletedAt,
+        };
+    }
+
+    async findByUserIdForAuth(userId: string) {
         return this.usersRepo.findOne({
-            where: { email, isActive:true},
+            where: { userId, isActive: true },
             select: {
-                id:true,
+                id: true,
                 userId: true,
-                email: true,
                 passwordHash: true,
                 role: true,
                 isActive: true,
             },
         });
     }
-    //-------------------------------------------
 
-    async create(dto: CreateUserDto) {
-        try {
-            const existingUser = await this.usersRepo.findOne({ where: { email: dto.email } });
-
-            if (existingUser) {
-                throw new ConflictException('Email already exists');
-            }
-
-            //will be implement bcrypt for pass hashing
-            let hashedPass = await bcrypt.hash(dto.password,12); //ecryp key length 12
-
-            const user = this.usersRepo.create({
-                userId: dto.userId,
-                name: dto.name,
-                email: dto.email,
-                passwordHash: hashedPass, //will be use only hasshed password
-                role: dto.role,
-                isActive: dto.isActive,
-            });
-
-            const savedUser = await this.usersRepo.save(user);
-
-            //delete hashpassword for : not return in the response
-            //
-            //
-            const { passwordHash, ...userWithoutPass } = savedUser; //destructures to remove hashedpass
-            return {
-                message: 'User created successfully',
-                data: userWithoutPass,
-            };
-        } catch (error) {
-            throw error;
+    async create(dto: CreateUserDto, actor: AuthUser) {
+        if (actor.accountType !== 'ADMIN' || actor.role !== 'ADMIN') {
+            throw new ForbiddenException('Only admin can create user accounts');
         }
+
+        const existingUser = await this.usersRepo.findOne({
+            where: { email: dto.email },
+            withDeleted: true,
+        });
+        if (existingUser) throw new ConflictException('Email already exists');
+
+        const admin = await this.adminsRepo.findOne({ where: { adminId: actor.userId } });
+        if (!admin) throw new UnauthorizedException('Admin account is no longer valid');
+
+        const user = this.usersRepo.create({
+            userId: await this.generateUserId(dto.role),
+            name: dto.name,
+            email: dto.email,
+            passwordHash: await bcrypt.hash(dto.password, 12),
+            role: dto.role,
+            isActive: dto.isActive ?? true,
+            admin,
+        });
+        const savedUser = await this.usersRepo.save(user);
+        return { message: 'User created successfully', data: this.sanitize(savedUser) };
     }
 
-    async findAll() {
-        try {
-            const users = await this.usersRepo.find({
-                select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    role: true,
-                    isActive: true,
-                    createdAt: true,
-                },
+    async findAll(actor: AuthUser) {
+        let users: User[];
+        if (actor.accountType === 'ADMIN' && actor.role === 'ADMIN') {
+            users = await this.usersRepo.find({
+                withDeleted: true,
                 order: { createdAt: 'DESC' },
             });
-
-            if (!users || users.length === 0) {
-                throw new NotFoundException('No users found');
-            }
-
-            return {
-                message: 'Users fetched successfully',
-                count: users.length,
-                data: users,
-            };
-
-        } catch (error) {
-            if (error instanceof NotFoundException) {
-                throw error;
-            }
-
-            throw new InternalServerErrorException('Failed to fetch users');
-        }
-    }
-
-    //find one by one user
-    async findOne(id: number) {
-        try {
-            // Validate ID
-            if (!id || !Number.isInteger(id) || id <= 0) {
-                throw new BadRequestException('Invalid user ID');
-            }
-
-            const user = await this.usersRepo.findOne({
-                where: { id },
-                select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    role: true,
-                    isActive: true,
-                    createdAt: true,
-                },
+        } else if (actor.role === RegisterableUserRole.MANAGER) {
+            users = await this.usersRepo.find({
+                where: { role: RegisterableUserRole.LAB_ASSISTANT },
+                order: { createdAt: 'DESC' },
             });
-
-            // Check if user exists
-            if (!user) {
-                throw new NotFoundException(`User with ID ${id} not found`);
-            }
-
-            return {
-                message: 'User found successfully',
-                data: user,
-            };
-
-        } catch (error) {
-            if (
-                error instanceof BadRequestException ||
-                error instanceof NotFoundException
-            ) {
-                throw error;
-            }
-
-            throw new InternalServerErrorException('Failed to fetch user');
+        } else {
+            throw new ForbiddenException('Use your userId to view your own account');
         }
+
+        return {
+            message: 'Users fetched successfully',
+            count: users.length,
+            data: users.map((user) => this.sanitize(user)),
+        };
     }
 
-    // update user
-    async update(id: number, dto: UpdateUserDto) {
-        try {
-            // Validate ID
-            if (!id || !Number.isInteger(id) || id <= 0) {
-                throw new BadRequestException('Invalid user ID');
+    async findOne(userId: string, actor: AuthUser) {
+        if (!userId?.trim()) throw new BadRequestException('User ID is required');
+
+        const isAdmin = actor.accountType === 'ADMIN' && actor.role === 'ADMIN';
+        const user = await this.usersRepo.findOne({
+            where: { userId },
+            withDeleted: isAdmin,
+        });
+        if (!user) throw new NotFoundException(`User ${userId} not found`);
+
+        if (!isAdmin) {
+            const canViewSelf = actor.accountType === 'USER' && actor.userId === user.userId;
+            const canManagerViewAssistant =
+                actor.accountType === 'USER' &&
+                actor.role === RegisterableUserRole.MANAGER &&
+                user.role === RegisterableUserRole.LAB_ASSISTANT;
+            if (!canViewSelf && !canManagerViewAssistant) {
+                throw new ForbiddenException('You are not allowed to view this user');
             }
-
-            // Check if user exists
-            const user = await this.usersRepo.findOne({ where: { id } });
-
-            if (!user) {
-                throw new NotFoundException(`User with ID ${id} not found`);
-            }
-
-            // Check duplicate email
-            if (dto.email && dto.email !== user.email) {
-                const existingUser = await this.usersRepo.findOne({
-                    where: { email: dto.email },
-                });
-
-                if (existingUser) {
-                    throw new ConflictException('Email already exists');
-                }
-            }
-
-            // Update allowed fields only
-            if (dto.name !== undefined) {
-                user.name = dto.name;
-            }
-
-            if (dto.email !== undefined) {
-                user.email = dto.email;
-            }
-
-            if (dto.role !== undefined) {
-                user.role = dto.role;
-            }
-
-            if (dto.isActive !== undefined) {
-                user.isActive = dto.isActive;
-            }
-
-            // Hash password before updating
-            // if (dto.password) {
-            //     user.passwordHash = await bcrypt.hash(dto.password, 10);
-            // }
-
-            // Save updated user
-            const updatedUser = await this.usersRepo.save(user);
-
-            // Remove password hash from response
-            //delete updatedUser.passwordHash;
-
-            return {
-                message: 'User updated successfully',
-                data: updatedUser,
-            };
-
-        } catch (error) {
-            if (
-                error instanceof BadRequestException ||
-                error instanceof NotFoundException ||
-                error instanceof ConflictException
-            ) {
-                throw error;
-            }
-
-            throw new InternalServerErrorException('Failed to update user');
         }
+        return { message: 'User found successfully', data: this.sanitize(user) };
     }
 
-    //delete
-    async remove(id: number) {
-        try {
-            // Validate ID
-            if (!id || !Number.isInteger(id) || id <= 0) {
-                throw new BadRequestException('Invalid user ID');
-            }
+    async update(userId: string, dto: UpdateUserDto, actor: AuthUser) {
+        if (!userId?.trim()) throw new BadRequestException('User ID is required');
+        const user = await this.usersRepo.findOne({ where: { userId } });
+        if (!user) throw new NotFoundException(`User ${userId} not found`);
 
-            // Check if user exists
-            const user = await this.usersRepo.findOne({
-                where: { id },
+        const isAdmin = actor.accountType === 'ADMIN' && actor.role === 'ADMIN';
+        const isSelf = actor.accountType === 'USER' && actor.userId === user.userId;
+        if (!isAdmin && !isSelf) {
+            throw new ForbiddenException('You can only update your own account');
+        }
+        if (!isAdmin && (dto.role !== undefined || dto.isActive !== undefined)) {
+            throw new ForbiddenException('Only admin can change role or account status');
+        }
+
+        if (dto.email && dto.email !== user.email) {
+            const emailOwner = await this.usersRepo.findOne({
+                where: { email: dto.email },
+                withDeleted: true,
             });
-
-            if (!user) {
-                throw new NotFoundException(`User with ID ${id} not found`);
-            }
-
-            // Soft delete user
-            await this.usersRepo.softDelete(id);
-
-            return {
-                message: 'User deleted successfully',
-                id,
-            };
-
-        } catch (error) {
-            if (
-                error instanceof BadRequestException ||
-                error instanceof NotFoundException
-            ) {
-                throw error;
-            }
-
-            throw new InternalServerErrorException('Failed to delete user');
+            if (emailOwner) throw new ConflictException('Email already exists');
         }
+
+        if (dto.name !== undefined) user.name = dto.name;
+        if (dto.email !== undefined) user.email = dto.email;
+        if (dto.password !== undefined) user.passwordHash = await bcrypt.hash(dto.password, 12);
+        if (isAdmin && dto.role !== undefined) user.role = dto.role;
+        if (isAdmin && dto.isActive !== undefined) user.isActive = dto.isActive;
+
+        const updatedUser = await this.usersRepo.save(user);
+        return { message: 'User updated successfully', data: this.sanitize(updatedUser) };
     }
 
+    async remove(userId: string, actor: AuthUser) {
+        if (actor.accountType !== 'ADMIN' || actor.role !== 'ADMIN') {
+            throw new ForbiddenException('Only admin can delete user accounts');
+        }
+        if (!userId?.trim()) throw new BadRequestException('User ID is required');
 
+        const user = await this.usersRepo.findOne({ where: { userId } });
+        if (!user) throw new NotFoundException(`User ${userId} not found`);
 
+        user.isActive = false;
+        await this.usersRepo.save(user);
+        await this.usersRepo.softDelete(user.id);
+        return { message: 'User deleted successfully', userId: user.userId };
+    }
 }

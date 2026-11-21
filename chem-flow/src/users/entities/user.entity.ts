@@ -1,7 +1,8 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, DeleteDateColumn, ManyToOne, JoinColumn, OneToMany, RelationId } from 'typeorm';
 import type { Relation } from 'typeorm';
-import { RegisterableUserRole as UserRole}  from '../dto/create-user.dto.js';
-import { Admin } from 'typeorm/driver/mongodb/typings.js';
+import { RegisterableUserRole as UserRole } from '../dto/create-user.dto.js';
+export { RegisterableUserRole as UserRole } from '../dto/create-user.dto.js';
+import { Admin } from '../../admin/entities/admin.entity.js';
 import { Membership } from '../../groups/entities/membership.entity.js';
 
 @Entity('users')

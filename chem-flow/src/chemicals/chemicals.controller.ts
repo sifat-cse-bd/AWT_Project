@@ -20,26 +20,36 @@ import { PaginationDto } from './dtos/pagination.dto.js';
 export class ChemicalsController {
   constructor(private readonly chemicalsService: ChemicalsService) {}
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RegisterableUserRole.MANAGER)
   @Post('create')
   async createChemical(@Body() dto:CreateChemicalDto):Promise<Chemical>{
     return this.chemicalsService.createChemical(dto);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RegisterableUserRole.MANAGER, RegisterableUserRole.STUDENT,RegisterableUserRole.LAB_ASSISTANT)
   @Get('list')
   async getChemicalsList(@Query() pagination:PaginationDto):Promise<Chemical[]>{
     return this.chemicalsService.getChemicalsList(pagination);
   }
-
+  
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RegisterableUserRole.MANAGER, RegisterableUserRole.STUDENT,RegisterableUserRole.LAB_ASSISTANT)
   @Get('get/:id')
   async getChemicalById(@Param('id', ParseIntPipe) id:number):Promise<Chemical>{
     return this.chemicalsService.getChemicalById(id);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RegisterableUserRole.MANAGER)
   @Patch('update/:id')
   async updateChemical(@Param('id', ParseIntPipe) id:number, @Body() dto:UpdateChemicalDto):Promise<Chemical>{
     return this.chemicalsService.updateChemical(id,dto);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RegisterableUserRole.MANAGER)
   @Delete('delete/:id')
   async deleteChemical(@Param('id', ParseIntPipe) id:number):Promise<ResponseDto>{
     return await this.chemicalsService.softDeleteChemical(id);

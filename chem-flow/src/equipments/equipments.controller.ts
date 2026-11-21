@@ -9,6 +9,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 import { RegisterableUserRole } from '../users/dto/create-user.dto.js';
+import { Equipment } from './entities/equipment.entity.js';
 
 
 @ApiTags('equipments')
@@ -90,6 +91,20 @@ export class EquipmentsController
     return this.equipmentsService.DeleteEquipment(id);
   }
 
-  
+  @ApiOperation({ summary: 'Assign equipment to storage', description: 'Only administrators and managers can assign equipments to storage sections.' })
+  @ApiResponse({ status: 200, description: 'Equipment assigned to storage successfully.' })
+  @ApiResponse({ status: 404, description: 'Equipment or storage section not found.' })
+  @ApiResponse({status: 403, description: 'Forbidden. Only administrators and managers can assign equipments to storage sections.'})
+  @Roles('ADMIN', RegisterableUserRole.MANAGER)
+  @Patch(':equipId/storage/:storeId')
+  AssignEquipmentToStorage(
+      @Param('equipId', ParseIntPipe) equipId: number,
+      @Param('storeId', ParseIntPipe) storeId: number
+    )
+    {
+      return this.equipmentsService.AssignEquipmentToStorage(equipId, storeId);
+    }
+      
+
 
 }

@@ -54,7 +54,6 @@ export class ChemicalsController {
   async deleteChemical(@Param('id', ParseIntPipe) id:number):Promise<ResponseDto>{
     return await this.chemicalsService.softDeleteChemical(id);
   }
-
   // @Get('low-stock')
   // async getLowStockList():Promise<CreateChemicalDto[]>{
   //   return await this.chemicalsService.getLowStockList();

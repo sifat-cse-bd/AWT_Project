@@ -1,15 +1,18 @@
 import {
     BadRequestException,
     ConflictException,
+    ForbiddenException,
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from '../users/entities/user.entity.js';
-import { Booking, BookingStatus } from './entities/booking.entity.js';
+import { FindManyOptions, Repository } from 'typeorm';
+import type { AuthUser } from '../auth/auth-user.js';
+import { Group } from '../groups/entities/group.entity.js';
+import { User, UserRole } from '../users/entities/user.entity.js';
 import { CreateBookingDto } from './dto/create-booking.dto.js';
 import { UpdateBookingDto } from './dto/update-booking.dto.js';
+import { Booking } from './entities/booking.entity.js';
 
 @Injectable()
 export class BookingsService {
@@ -18,38 +21,57 @@ export class BookingsService {
         private readonly bookingsRepo: Repository<Booking>,
         @InjectRepository(User)
         private readonly usersRepo: Repository<User>,
+        @InjectRepository(Group)
+        private readonly groupsRepo: Repository<Group>,
     ) {}
 
-    async create(dto: CreateBookingDto) {
-        const { startAt, endAt } = this.validateSchedule(dto.startAt, dto.endAt);
-        const requester = await this.usersRepo.findOne({
-            where: { userId: dto.requesterUserId, isActive: true },
-        });
-
-        if (!requester) {
-            throw new NotFoundException(`Active user ${dto.requesterUserId} not found`);
+    async create(dto: CreateBookingDto, actor: AuthUser) {
+        if (actor.accountType !== 'USER' || actor.role !== UserRole.STUDENT) {
+            throw new ForbiddenException('Only authenticated students can request bookings');
         }
 
-        const booking = await this.bookingsRepo.save(this.bookingsRepo.create({
-            requester,
-            startAt,
-            endAt,
-            purpose: dto.purpose,
-            status: BookingStatus.PENDING,
-        }));
+        const group = await this.findGroup(dto.groupId);
+        if (!this.isGroupMember(group, actor.userId)) {
+            throw new ForbiddenException('Only a group member can request a booking for this group');
+        }
 
+        const existingBooking = await this.bookingsRepo.findOne({
+            where: { group: { groupId: dto.groupId } },
+        });
+        if (existingBooking) {
+            throw new ConflictException('This group already has a booking request');
+        }
+
+        const booking = this.bookingsRepo.create({
+            title: dto.title,
+            group,
+            manager: null,
+            cancelAt: null,
+        });
+        const savedBooking = await this.bookingsRepo.save(booking);
         return {
             message: 'Booking request created successfully',
-            data: this.toResponse(booking),
+            data: this.toResponse(savedBooking),
         };
     }
 
-    async findAll() {
-        const bookings = await this.bookingsRepo.find({
-            relations: { requester: true },
-            order: { startAt: 'ASC' },
-        });
+    async findAll(actor: AuthUser) {
+        const options: FindManyOptions<Booking> = {
+            relations: {
+                group: { memberships: { user: true }, createdBy: true },
+                manager: true,
+            },
+            order: { createdAt: 'DESC' },
+        };
 
+        if (!this.canViewAll(actor)) {
+            options.where = [
+                { group: { createdBy: { userId: actor.userId } } },
+                { group: { memberships: { user: { userId: actor.userId } } } },
+            ];
+        }
+
+        const bookings = await this.bookingsRepo.find(options);
         return {
             message: 'Bookings fetched successfully',
             count: bookings.length,
@@ -57,32 +79,21 @@ export class BookingsService {
         };
     }
 
-    async findOne(id: number) {
-        const booking = await this.findBooking(id);
-
+    async findOne(bookingId: number, actor: AuthUser) {
+        const booking = await this.findBooking(bookingId);
+        this.ensureCanView(booking, actor);
         return {
             message: 'Booking found successfully',
             data: this.toResponse(booking),
         };
     }
 
-    async update(id: number, dto: UpdateBookingDto) {
-        const booking = await this.findBooking(id);
-        this.ensurePending(booking);
+    async update(bookingId: number, dto: UpdateBookingDto, actor: AuthUser) {
+        const booking = await this.findBooking(bookingId);
+        this.ensureCanManage(booking, actor);
+        this.ensureNotCancelled(booking);
 
-        if (dto.startAt !== undefined || dto.endAt !== undefined) {
-            const schedule = this.validateSchedule(
-                dto.startAt ?? booking.startAt.toISOString(),
-                dto.endAt ?? booking.endAt.toISOString(),
-            );
-            booking.startAt = schedule.startAt;
-            booking.endAt = schedule.endAt;
-        }
-
-        if (dto.purpose !== undefined) {
-            booking.purpose = dto.purpose;
-        }
-
+        if (dto.title !== undefined) booking.title = dto.title;
         const updatedBooking = await this.bookingsRepo.save(booking);
         return {
             message: 'Booking updated successfully',
@@ -90,11 +101,12 @@ export class BookingsService {
         };
     }
 
-    async cancel(id: number) {
-        const booking = await this.findBooking(id);
-        this.ensurePending(booking);
-        booking.status = BookingStatus.CANCELLED;
+    async cancel(bookingId: number, actor: AuthUser) {
+        const booking = await this.findBooking(bookingId);
+        this.ensureCanManage(booking, actor);
+        this.ensureNotCancelled(booking);
 
+        booking.cancelAt = new Date();
         const cancelledBooking = await this.bookingsRepo.save(booking);
         return {
             message: 'Booking cancelled successfully',
@@ -102,58 +114,105 @@ export class BookingsService {
         };
     }
 
-    private async findBooking(id: number) {
-        const booking = await this.bookingsRepo.findOne({
-            where: { id },
-            relations: { requester: true },
-        });
-
-        if (!booking) {
-            throw new NotFoundException(`Booking ${id} not found`);
+    async approve(bookingId: number, actor: AuthUser) {
+        if (actor.accountType !== 'USER' || actor.role !== UserRole.MANAGER) {
+            throw new ForbiddenException('Only MANAGER users can approve bookings');
         }
 
+        const booking = await this.findBooking(bookingId);
+        this.ensureNotCancelled(booking);
+        if (booking.manager) {
+            throw new ConflictException('This booking has already been approved');
+        }
+
+        const manager = await this.usersRepo.findOne({
+            where: {
+                userId: actor.userId,
+                role: UserRole.MANAGER,
+                isActive: true,
+            },
+        });
+        if (!manager) {
+            throw new ForbiddenException('An active MANAGER account is required to approve bookings');
+        }
+
+        booking.manager = manager;
+        const approvedBooking = await this.bookingsRepo.save(booking);
+        return {
+            message: 'Booking approved successfully',
+            data: this.toResponse(approvedBooking),
+        };
+    }
+
+    private async findBooking(bookingId: number) {
+        if (!Number.isInteger(bookingId) || bookingId <= 0) {
+            throw new BadRequestException('Invalid booking ID');
+        }
+
+        const booking = await this.bookingsRepo.findOne({
+            where: { bookingId },
+            relations: {
+                group: { memberships: { user: true }, createdBy: true },
+                manager: true,
+            },
+        });
+        if (!booking) throw new NotFoundException(`Booking ${bookingId} not found`);
         return booking;
     }
 
-    private validateSchedule(startAtValue: string, endAtValue: string) {
-        const startAt = new Date(startAtValue);
-        const endAt = new Date(endAtValue);
-
-        if (Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime())) {
-            throw new BadRequestException('Booking dates must be valid');
-        }
-
-        if (startAt <= new Date()) {
-            throw new BadRequestException('Booking start time must be in the future');
-        }
-
-        if (endAt <= startAt) {
-            throw new BadRequestException('Booking end time must be after the start time');
-        }
-
-        return { startAt, endAt };
+    private async findGroup(groupId: string) {
+        const group = await this.groupsRepo.findOne({
+            where: { groupId },
+            relations: { memberships: { user: true }, createdBy: true },
+        });
+        if (!group) throw new NotFoundException(`Group ${groupId} not found`);
+        return group;
     }
 
-    private ensurePending(booking: Booking) {
-        if (booking.status !== BookingStatus.PENDING) {
-            throw new ConflictException('Only pending bookings can be changed or cancelled');
+    private canViewAll(actor: AuthUser): boolean {
+        return actor.accountType === 'ADMIN' || actor.role === UserRole.MANAGER;
+    }
+
+    private ensureCanView(booking: Booking, actor: AuthUser) {
+        if (!this.canViewAll(actor) && !this.isGroupMember(booking.group, actor.userId)) {
+            throw new ForbiddenException('Only group members can view this booking');
         }
+    }
+
+    private ensureCanManage(booking: Booking, actor: AuthUser) {
+        const isAdmin = actor.accountType === 'ADMIN';
+        const isGroupMember =
+            actor.accountType === 'USER' && this.isGroupMember(booking.group, actor.userId);
+        const isApproved = Boolean(booking.manager ?? booking.userId);
+
+        if (!isAdmin && (!isGroupMember || isApproved)) {
+            throw new ForbiddenException('Only group members may manage a booking before approval');
+        }
+    }
+
+    private ensureNotCancelled(booking: Booking) {
+        if (booking.cancelAt) {
+            throw new ConflictException('Cancelled bookings cannot be changed');
+        }
+    }
+
+    private isGroupMember(group: Group, userId: string): boolean {
+        const creatorUserId = group.createdBy?.userId ?? group.createdByUserId;
+        return (
+            creatorUserId === userId ||
+            Boolean(group.memberships?.some((membership) => membership.user?.userId === userId))
+        );
     }
 
     private toResponse(booking: Booking) {
         return {
-            id: booking.id,
-            requester: {
-                userId: booking.requester.userId,
-                name: booking.requester.name,
-                email: booking.requester.email,
-            },
-            startAt: booking.startAt,
-            endAt: booking.endAt,
-            purpose: booking.purpose,
-            status: booking.status,
+            bookingId: booking.bookingId,
+            title: booking.title,
             createdAt: booking.createdAt,
             updatedAt: booking.updatedAt,
+            cancelAt: booking.cancelAt ?? null,
+            groupId: booking.group?.groupId ?? booking.groupId,
+            userId: booking.manager?.userId ?? booking.userId ?? null,
         };
     }
 }

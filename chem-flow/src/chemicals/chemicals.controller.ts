@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ChemicalsService } from './chemicals.service.js';
 import { CreateChemicalDto } from './dtos/create-chemical.dto.js';
 import { UpdateChemicalDto } from './dtos/update-chemical.dto.js';
@@ -9,6 +9,7 @@ import { RegisterableUserRole } from '../users/dto/create-user.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { Chemical } from './entities/chemical.entity.js';
+import { PaginationDto } from './dtos/pagination.dto.js';
 
 @Controller('chemicals')
 @ApiBearerAuth()//FOR AUTH---------------------------------------------------
@@ -25,8 +26,8 @@ export class ChemicalsController {
   }
 
   @Get('list')
-  async getChemicalsList():Promise<Chemical[]>{
-    return this.chemicalsService.getChemicalsList();
+  async getChemicalsList(@Query() pagination:PaginationDto):Promise<Chemical[]>{
+    return this.chemicalsService.getChemicalsList(pagination);
   }
 
   @Get('get/:id')

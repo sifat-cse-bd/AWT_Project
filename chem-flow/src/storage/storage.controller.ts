@@ -1,9 +1,10 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { StorageService } from './storage.service.js';
 import { CreateStorageDto } from './dtos/create-storage.dto.js';
 import { UpdateStorageDto } from './dtos/update-storage.dto.js';
 import { ResponseDto } from './dtos/response.dto.js';
 import { Storage } from './entities/storage.entity.js';
+import { PaginationDto } from './dtos/pagination.dto.js';
 
 @Controller('storage')
 export class StorageController {
@@ -15,8 +16,8 @@ export class StorageController {
   }
 
   @Get('list')
-  getStorageList(): Promise<Storage[]> {
-    return this.storageService.getStorageList();
+  getStorageList(@Query() pagination:PaginationDto): Promise<Storage[]> {
+    return this.storageService.getStorageList(pagination);
   }
 
   @Get('get/:id')

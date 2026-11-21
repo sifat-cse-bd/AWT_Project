@@ -5,6 +5,7 @@ import { CreateStorageDto } from './dtos/create-storage.dto.js';
 import { UpdateStorageDto } from './dtos/update-storage.dto.js';
 import { ResponseDto } from './dtos/response.dto.js';
 import { Storage } from './entities/storage.entity.js';
+import { PaginationDto } from './dtos/pagination.dto.js';
 
 @Injectable()
 export class StorageService {
@@ -27,8 +28,8 @@ export class StorageService {
     }
   }
 
-  async getStorageList(): Promise<Storage[]> {
-    const storages = await this.storageRepo.find();
+  async getStorageList({page,limit}:PaginationDto): Promise<Storage[]> {
+    const [storages,total] = await this.storageRepo.findAndCount();
     if (storages.length === 0) {
       throw new NotFoundException('No storage locations found.');
     }

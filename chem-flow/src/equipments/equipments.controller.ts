@@ -9,12 +9,10 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 import { RegisterableUserRole } from '../users/dto/create-user.dto.js';
-import { Equipment } from './entities/equipment.entity.js';
 
 
 @ApiTags('equipments')
 @Controller('equipments')
-@ApiTags('equipments')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('equipments')
@@ -25,6 +23,7 @@ export class EquipmentsController
   @ApiOperation({ summary: 'Create a new equipment', description: 'Only administrators and managers can create new equipments.' })
   @ApiResponse({ status: 201, description: 'The equipment has been successfully created.' })
   @ApiResponse({ status: 400, description: 'Bad Request / Validation failed.' })
+  @ApiResponse({ status: 403, description: 'Forbidden. You do not have permission to perform this action.' })
   @Roles('ADMIN', RegisterableUserRole.MANAGER)
   @Post('/create')
   create(@Body() dto: CreateEquipmentDto) 

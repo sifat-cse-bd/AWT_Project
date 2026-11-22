@@ -9,7 +9,6 @@ import { ChemicalsModule } from './chemicals/chemicals.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { GroupsModule } from './groups/groups.module.js';
 import { BookingsModule } from './bookings/bookings.module.js';
-import { DocumentsModule } from './documents/documents.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -45,7 +44,6 @@ import { AdminModule } from './admin/admin.module.js';
     StorageModule,
     GroupsModule,
     BookingsModule,
-    DocumentsModule,
     MailModule,
     AuditModule,
     SlotsModule,

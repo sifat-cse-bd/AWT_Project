@@ -2,14 +2,14 @@ import { Controller, Get, Post, Delete, Patch, Body, ParseIntPipe, Param} from '
 import { EquipmentsService } from './equipments.service.js';
 import { CreateEquipmentDto } from './dto/create-equipment.dto.js';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto.js';
-import {ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
+import {ApiOperation, ApiResponse, ApiTags, ApiBody} from '@nestjs/swagger';
 import { UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 import { RegisterableUserRole } from '../users/dto/create-user.dto.js';
-
+import { CreateEquipmentWithStorageDto } from './dto/create-equipment-with-storage.dto.js';
 
 @ApiTags('equipments')
 @Controller('equipments')
@@ -138,4 +138,23 @@ export class EquipmentsController
     {
         return this.equipmentsService.GetEquipmentsByStorage(storeId);
     }
+
+
+
+    @Roles('ADMIN', RegisterableUserRole.MANAGER)
+@Post('create-with-storage')
+@ApiOperation({
+    summary: 'Create Equipment with Storage (Transaction)',
+    description: 'Creates equipment and assigns storage. If assignment fails, the transaction is rolled back.'
+})
+@ApiBody({ type: CreateEquipmentWithStorageDto })
+@ApiResponse({ status: 201, description: 'Equipment created and assigned successfully.' })
+@ApiResponse({ status: 400, description: 'Invalid input or Lab Assistant role.' })
+@ApiResponse({ status: 404, description: 'Lab Assistant or Storage not found. Transaction rolled back.' })
+ async CreateEquipmentWithStorage(
+    @Body() dto: CreateEquipmentWithStorageDto
+      ) 
+      {
+          return await this.equipmentsService.CreateEquipmentWithStorage(dto);
+      }
 }

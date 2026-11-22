@@ -24,9 +24,9 @@ export class Storage{
     equipments: Relation<Equipment[]>;
 
     @ManyToOne(() => User, user => user.storages, {
-    nullable: true,
-    onDelete: 'SET NULL'
+    nullable: false,
+    onDelete: 'CASCADE',
     })
     @JoinColumn({ name: 'userId', referencedColumnName: 'userId' })
-    labAssistant: Relation<User> | null;
+    labAssistant: Relation<User>;
 }

@@ -45,7 +45,7 @@ export class ChemicalsService {
     }
 
     //read list
-    async getChemicalsList({page,limit}:PaginationDto):Promise<Chemical[]>{
+    async getChemicalsList({ page = 1, limit = 2 }: PaginationDto):Promise<Chemical[]>{
         const [list,total] = await this.chemicalRepo.findAndCount({
             relations: { storage: true },
             order: { chemId: 'ASC' },

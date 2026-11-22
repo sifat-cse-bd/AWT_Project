@@ -9,7 +9,7 @@ export class PaginationDto{
     @Type(()=>Number)
     @IsInt()
     @Min(1)
-    page=1;
+    page?=1;
 
     @ApiPropertyOptional({ example: 1, description: 'Items to show per page' })
     @IsOptional()
@@ -17,5 +17,5 @@ export class PaginationDto{
     @IsInt()
     @Min(1)
     @Max(50)
-    limit=2;
+    limit?=2;
 }

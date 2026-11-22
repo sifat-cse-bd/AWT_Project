@@ -2,12 +2,13 @@ import { Injectable, BadRequestException, NotFoundException, ConflictException }
 import { CreateEquipmentDto } from './dto/create-equipment.dto.js';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto.js';
 import { Equipment } from './entities/equipment.entity.js';
-import { Repository, ILike } from 'typeorm';
+import { Repository, ILike, DataSource } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UsersService } from '../users/users.service.js';
 import { RegisterableUserRole } from '../users/dto/create-user.dto.js';
 import { StorageService } from '../storage/storage.service.js';
 import { Storage } from '../storage/entities/storage.entity.js';
+import { User } from '../users/entities/user.entity.js';
 
 @Injectable()
 export class EquipmentsService 
@@ -16,7 +17,8 @@ export class EquipmentsService
     @InjectRepository(Equipment)
     private readonly equipmentRepo: Repository<Equipment>,
     private readonly usersService: UsersService,
-    private readonly storageService: StorageService
+    private readonly storageService: StorageService,
+    private readonly dataSource: DataSource
   ) {}
 
   async CreateEquipment(CreateEQP: CreateEquipmentDto): Promise<Equipment>
@@ -269,5 +271,63 @@ export class EquipmentsService
 
       return equipments;
   }
+
+  async CreateEquipmentWithStorage(
+    dto: CreateEquipmentDto & { storeId: number }
+): Promise<Equipment> {
+
+    return await this.dataSource.transaction(async (manager) => {
+
+        // Validate Lab Assistant
+        const userEQP = await manager.findOne(User, {
+            where: {
+                userId: dto.userId,
+                isActive: true
+            }
+        });
+
+        if (!userEQP) {
+            throw new NotFoundException('User not found or inactive.');
+        }
+
+        if (userEQP.role !== RegisterableUserRole.LAB_ASSISTANT) {
+            throw new BadRequestException(
+                'Only lab assistants can be assigned as equipment observers.'
+            );
+        }
+
+        // Validate Equipment Quantity
+        if (dto.availability > dto.totalQty) {
+            throw new BadRequestException(
+                'Available Quantity cannot exceed Total Quantity.'
+            );
+        }
+
+        // Create Equipment
+        const newEquipment = manager.create(Equipment, {
+            name: dto.name,
+            description: dto.description,
+            totalQty: dto.totalQty,
+            availability: dto.availability,
+            labAssistant: userEQP
+        });
+
+        const savedEquipment = await manager.save(newEquipment);
+
+        // Find Storage
+        const storage = await manager.findOne(Storage, {
+            where: { storeId: dto.storeId }
+        });
+
+        if (!storage) {
+            throw new NotFoundException('Storage not found.');
+        }
+
+        // Assign Equipment to Storage
+        savedEquipment.storages = [storage];
+
+        return await manager.save(savedEquipment);
+    });
+}
 
 }

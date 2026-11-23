@@ -15,7 +15,7 @@ export class AuthService {
   async login(userId: string, password: string) {
     const user = await this.usersService.findByUserIdForAuth(userId);
     if (user) {
-      if (!(await bcrypt.compare(password, user.passwordHash))) {
+      if (!(await bcrypt.compare(password, user.passwordHash))) { //compares typed pw with db hashedpw
         throw new UnauthorizedException('Invalid user ID or password');
       }
 

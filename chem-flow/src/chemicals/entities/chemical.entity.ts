@@ -37,28 +37,6 @@ export class Chemical {
    @JoinColumn({ name: 'bookingId' })
    booking?: Relation<Booking> | null;
 
-   // //RELATIONS CHEMICAL-(M)-------(1)-BOOKING
-   // @Column({nullable:true})
-   // bookingId:number|null;
-
-
-
-   // //RELATIONS CHEMICAL-(M)-------(1)-USER
-   // @Column({nullable:true})
-   // userId:number|null;
-
-   // @ManyToOne(() => User, (user) => user.chemicals,{ 
-   //   nullable: true, 
-   //   onDelete: 'SET NULL' 
-   // })
-   // @JoinColumn({ name:'userId'})
-   // labAssistant?: Relation<User> | null;
-
-   // //RELATIONS CHEMICAL-(M)-------(1)-STORAGELOCATION
-   // @ManyToMany(()=>StorageLocation,(storage)=>storage.chemicals)
-   // @JoinTable({ name: 'chemicalStorage', joinColumn: { name: 'chemId', referenceColumn: 'chemId' }, inverseJoinColumn: { name: 'storeId', referenceColumn: 'storeId' } })
-   // storages?: Relation<StorageLocation[]>;
-
    //TIMESTAMPs
    @CreateDateColumn({ type: 'timestamptz' }) createdAt: Date;
    @UpdateDateColumn({ name: 'updateAt', type: 'timestamptz' }) updateAt: Date;

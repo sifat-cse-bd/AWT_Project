@@ -72,7 +72,7 @@ export class UsersService {
             deletedAt: user.deletedAt, 
         };
     }
-
+    //for auth
     async findByUserIdForAuth(userId: string) {
         return this.usersRepo.findOne({
             where: { userId, isActive: true },

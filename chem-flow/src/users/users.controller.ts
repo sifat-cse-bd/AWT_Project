@@ -21,7 +21,6 @@ import { Roles } from '../auth/decorators/roles.decorator.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
-import { UpdateUserDto } from './dto/update-user.dto.js';
 import { UpdateUserSelfDto } from './dto/update-user-self.dto.js';
 import { UpdateUserAdminDto } from './dto/update-user-admin.dto.js';
 import { RegisterableUserRole } from './dto/create-user.dto.js';
@@ -171,5 +170,18 @@ export class UsersController {
   remove(@Param('userId') userId: string, @Req() request: { user: AuthUser }) {
     return this.usersService.remove(userId, request.user);
   }
+
+  @ApiOperation({summary: 'Permanently delete a user', description: 'Only administrators can permanently delete a user account.'}) 
+  @ApiResponse({status: 200, description: 'User permanently deleted successfully.',})
+  @ApiResponse({status: 401, description: 'Unauthorized. Valid JWT token is required.'})
+  @ApiResponse({status: 403, description: 'Forbidden. Only administrators can permanently delete users.'})
+  @ApiResponse({status: 404, description: 'User not found.'})
+  @ApiBearerAuth()
+  @Roles('ADMIN')
+  @Delete('hard/:userId')
+  hardRemove(@Param('userId') userId: string)
+   {
+      return this.usersService.hardRemove(userId);
+   }
 
 }

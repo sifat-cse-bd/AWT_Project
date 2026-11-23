@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsInt, IsPositive, IsString } from "class-validator";
+import { IsInt, IsNotEmpty, IsPositive, IsString } from "class-validator";
 
 export class CreateStorageDto{
 
@@ -16,4 +16,14 @@ export class CreateStorageDto{
         example: 'shelf-1'
     })
     shelf:string;
+    //Nahian
+    @ApiProperty
+    ({
+        description: 'Lab Assistant ID assigned to this storage',
+        example: 'LAS-001'
+    })
+    @IsString()
+    @IsNotEmpty()
+    userId: string;
+    //Nahian
 }

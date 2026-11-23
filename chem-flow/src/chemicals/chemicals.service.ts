@@ -32,7 +32,7 @@ export class ChemicalsService {
         try{
             const { storeId, ...chemicalFields } = dto;
             const newChemical = this.chemicalRepo.create({ ...chemicalFields, storage });
-            return await this.chemicalRepo.save(newChemical);
+            return await this.chemicalRepo.save(newChemical);//201
 
         }catch(error:any){
             //Postrgres 23505->duplicate of unique fields violation: //409
@@ -45,7 +45,7 @@ export class ChemicalsService {
     }
 
     //read list
-    async getChemicalsList({page,limit}:PaginationDto):Promise<Chemical[]>{
+    async getChemicalsList({ page = 1, limit = 2 }: PaginationDto):Promise<Chemical[]>{
         const [list,total] = await this.chemicalRepo.findAndCount({
             relations: { storage: true },
             order: { chemId: 'ASC' },

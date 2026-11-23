@@ -351,4 +351,22 @@ export class UsersService {
         });
         return { message: 'User deleted successfully', userId: user.userId };
     }
+
+    //Nahian
+    async hardRemove(userId: string)
+    {
+        const user = await this.findByUserId(userId);
+        
+        if(!user)
+            {
+                throw new NotFoundException('Not Found User');
+            }
+        await this.usersRepo.remove(user);
+        return { message: 'User permanently deleted successfully.',
+
+        };//Nahian
+        
+        
+    }
+        
 }

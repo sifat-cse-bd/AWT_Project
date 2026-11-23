@@ -6,17 +6,32 @@ import { UpdateStorageDto } from './dtos/update-storage.dto.js';
 import { ResponseDto } from './dtos/response.dto.js';
 import { Storage } from './entities/storage.entity.js';
 import { PaginationDto } from './dtos/pagination.dto.js';
+import { UsersService } from '../users/users.service.js';
+import { RegisterableUserRole } from '../users/dto/create-user.dto.js';
 
 @Injectable()
 export class StorageService {
   constructor(
     @InjectRepository(Storage)
     private readonly storageRepo: Repository<Storage>,
+    private readonly usersService: UsersService,
   ) { }
 
   async createStorage(dto: CreateStorageDto): Promise<Storage> {
     try {
+      //Nahian
+      const user = await this.usersService.findByUserId(dto.userId);
+      if (!user) {
+        throw new NotFoundException('User not found or inactive.');
+      }
+      if (user.role !== RegisterableUserRole.LAB_ASSISTANT) {
+        throw new BadRequestException('Only lab assistants can be assigned to storage locations.');
+      } //Nahian
+
       const storage = this.storageRepo.create(dto);
+
+      storage.labAssistant = user; //Nahian
+
       return this.storageRepo.save(storage);
     } catch (error: any) {
       //Postrgres 23505->duplicate of unique fields violation: //409
@@ -45,6 +60,20 @@ export class StorageService {
   }
 
   async updateStorage(id: number, dto: UpdateStorageDto): Promise<Storage> {
+ //Nahian
+    if(dto.userId !== undefined)
+      {
+        const user = await this.usersService.findByUserId(dto.userId);
+        if (!user) 
+          {
+            throw new NotFoundException('User not found or inactive.');
+          }
+        if (user.role !== RegisterableUserRole.LAB_ASSISTANT)
+          {
+            throw new BadRequestException('Only lab assistants can be assigned to storage locations.');
+          }
+      }//Nahian
+
     const storage = await this.storageRepo.update(id, dto);
     if (!storage.affected) { throw new NotFoundException(`Storage with ID: ${id} not found`) }
     return this.getStorageById(id); //return updated values

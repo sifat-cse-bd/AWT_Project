@@ -20,7 +20,7 @@ export class AuthService {
       }
 
       return {
-        accessToken: await this.jwtService.signAsync({
+          accessToken: await this.jwtService.signAsync({
           sub: user.userId,
           userId: user.userId,
           role: user.role,

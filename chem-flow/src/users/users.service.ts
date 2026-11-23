@@ -16,6 +16,7 @@ import { UpdateUserDto } from './dto/update-user.dto.js';
 import { User } from './entities/user.entity.js';
 import { UpdateUserSelfDto } from './dto/update-user-self.dto.js';
 import { UpdateUserAdminDto } from './dto/update-user-admin.dto.js';
+import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
 export class UsersService {
@@ -24,6 +25,7 @@ export class UsersService {
         private readonly usersRepo: Repository<User>,
         @InjectRepository(Admin)
         private readonly adminsRepo: Repository<Admin>,
+        private readonly auditService: AuditService,//audit service injection
     ) {}
 
     private async generateUserId(role: RegisterableUserRole): Promise<string> {
@@ -109,7 +111,20 @@ export class UsersService {
             isActive: dto.isActive ?? true,
             admin,
         });
-        const savedUser = await this.usersRepo.save(user);
+        // Save the user and audit record atomically.
+        const savedUser = await this.usersRepo.manager.transaction(async (manager) => {
+            const transactionUsersRepo = manager.getRepository(User);
+            const saved = await transactionUsersRepo.save(user);
+            await this.auditService.logAction(
+                manager,
+                'CREATE_USER',
+                actor.userId,
+                saved.userId,
+                { name: saved.name, email: saved.email, role: saved.role },
+                undefined,
+            );
+            return saved;
+        });
         return { message: 'User created successfully', data: this.sanitize(savedUser) };
     }
 
@@ -245,11 +260,27 @@ export class UsersService {
       if (emailOwner) throw new ConflictException('Email already exists');
     }
 
+    // Capture the before-state before applying the requested changes.
+    const oldName = user.name;
+    const oldEmail = user.email;
+
     if (dto.name !== undefined) user.name = dto.name;
     if (dto.email !== undefined) user.email = dto.email;
     if (dto.password !== undefined) user.passwordHash = await bcrypt.hash(dto.password, 12);
 
-    const updatedUser = await this.usersRepo.save(user);
+    // Save the user and audit record atomically.
+    const updatedUser = await this.usersRepo.manager.transaction(async (manager) => {
+      const saved = await manager.getRepository(User).save(user);
+      await this.auditService.logAction(
+        manager,
+        'UPDATE_USER_SELF',
+        actor.userId,
+        userId,
+        { oldName, newName: dto.name, oldEmail, newEmail: dto.email },
+        { updatedAt: new Date() },
+      );
+      return saved;
+    });
     return { message: 'User updated successfully', data: this.sanitize(updatedUser) };
   }
 
@@ -277,7 +308,19 @@ export class UsersService {
     if (dto.role !== undefined) user.role = dto.role;
     if (dto.isActive !== undefined) user.isActive = dto.isActive;
 
-    const updatedUser = await this.usersRepo.save(user);
+    // Save the user and audit record atomically.
+    const updatedUser = await this.usersRepo.manager.transaction(async (manager) => {
+      const saved = await manager.getRepository(User).save(user);
+      await this.auditService.logAction(
+        manager,
+        'UPDATE_USER_ADMIN',
+        actor.userId,
+        userId,
+        { name: saved.name, role: saved.role, isActive: saved.isActive },
+        { updatedAt: new Date() },
+      );
+      return saved;
+    });
     return { message: 'User updated successfully by Admin', data: this.sanitize(updatedUser) };
   }
 
@@ -290,9 +333,22 @@ export class UsersService {
         const user = await this.usersRepo.findOne({ where: { userId } });
         if (!user) throw new NotFoundException(`User ${userId} not found`);
 
-        user.isActive = false;
-        await this.usersRepo.save(user);
-        await this.usersRepo.softDelete(user.id);
+        // Keep the soft-delete and audit record in the same transaction.
+        const deletedAt = new Date();
+        await this.usersRepo.manager.transaction(async (manager) => {
+            const transactionUsersRepo = manager.getRepository(User);
+            user.isActive = false;
+            await transactionUsersRepo.save(user);
+            await transactionUsersRepo.softDelete(user.id);
+            await this.auditService.logAction(
+                manager,
+                'DELETE_USER',
+                actor.userId,
+                user.userId,
+                { name: user.name },
+                { deletedAt },
+            );
+        });
         return { message: 'User deleted successfully', userId: user.userId };
     }
 }

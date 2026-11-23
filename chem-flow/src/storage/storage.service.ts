@@ -85,7 +85,12 @@ export class StorageService {
 
   async deleteStorage(id: number): Promise<ResponseDto> {
     const storage = await this.getStorageById(id);
-    await this.storageRepo.remove(storage);
-    return { message: `Storage location with ID ${id} has been removed.` };
-  }
-}
+    if (!storage) {throw new NotFoundException(`Storage location with ID ${id} not found`);}
+    try{
+      await this.storageRepo.remove(storage);
+      return { message: `Storage location with ID ${id} has been removed.` };
+    }catch(error:any){
+      if(error.code=='23503'){throw new ConflictException('Cannot delete storage as chemicals are stored here.')}
+      throw error;
+    }
+  }}

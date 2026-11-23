@@ -44,11 +44,12 @@ export class StorageService {
   }
 
   async getStorageList({page,limit}:PaginationDto): Promise<Storage[]> {
-    const [storages,total] = await this.storageRepo.findAndCount();
-    if (storages.length === 0) {
-      throw new NotFoundException('No storage locations found.');
-    }
-    return storages;
+    const [list,total] = await this.storageRepo.findAndCount({
+      skip:(page-1)*limit,
+      take:limit
+    });
+    if (list.length === 0) {throw new NotFoundException('No storage locations found.');}
+    return list;
   }
 
   async getStorageById(id: number): Promise<Storage> {

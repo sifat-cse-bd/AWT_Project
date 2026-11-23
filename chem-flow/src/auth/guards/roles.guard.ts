@@ -23,7 +23,6 @@ export class RolesGuard implements CanActivate{
         else
             {
                 throw new ForbiddenException('You do not have permission to perform this operation.'); 
-                
             }
     }
 }

@@ -19,7 +19,7 @@ export class ChemicalsService {
 
     //create
     async createChemical(dto:CreateChemicalDto):Promise<Chemical>{
-        const currentDate = new Date().toISOString().slice(0, 10);
+        const currentDate = new Date().toLocaleDateString('en-CA');
         if (dto.expiryDate < currentDate) {
             throw new BadRequestException('Please ensure expiry date is not in the past');
         }
@@ -70,12 +70,11 @@ export class ChemicalsService {
     async updateChemical(id:number, dto:UpdateChemicalDto):Promise<Chemical>{
         const chemical = await this.getChemicalById(id);
         if (dto.expiryDate !== undefined) {
-            const currentDate = new Date().toISOString().slice(0, 10);
+            const currentDate = new Date().toLocaleDateString('en-CA');
             if (dto.expiryDate < currentDate) {
                 throw new BadRequestException('Please ensure expiry date is not in the past');
             }
         }
-
         const { storeId, ...chemicalFields } = dto;
         Object.assign(chemical, chemicalFields);
         if (storeId !== undefined) {

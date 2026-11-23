@@ -26,7 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       secretOrKey: config.getOrThrow<string>('JWT_SECRET'),
     });
   }
-  
+
   async validate(payload: JwtPayload) {
     if (!payload?.userId || !payload.sub || payload.sub !== payload.userId) {
       throw new UnauthorizedException('Invalid access token');

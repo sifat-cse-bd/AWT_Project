@@ -44,12 +44,11 @@ export class StorageService {
   }
 
   async getStorageList({page,limit}:PaginationDto): Promise<Storage[]> {
-    const [list,total] = await this.storageRepo.findAndCount({
-      skip:(page-1)*limit,
-      take:limit
-    });
-    if (list.length === 0) {throw new NotFoundException('No storage locations found.');}
-    return list;
+    const [storages,total] = await this.storageRepo.findAndCount();
+    if (storages.length === 0) {
+      throw new NotFoundException('No storage locations found.');
+    }
+    return storages;
   }
 
   async getStorageById(id: number): Promise<Storage> {
@@ -61,6 +60,9 @@ export class StorageService {
   }
 
   async updateStorage(id: number, dto: UpdateStorageDto): Promise<Storage> {
+
+    const storage=await this.storageRepo.findOne({where:{storeId:id}})
+    if(!storage){throw new NotFoundException(`Storage with ID: ${id} not found`)}
  //Nahian
     if(dto.userId !== undefined)
       {
@@ -73,11 +75,12 @@ export class StorageService {
           {
             throw new BadRequestException('Only lab assistants can be assigned to storage locations.');
           }
+          storage.labAssistant=user;
       }//Nahian
 
-    const storage = await this.storageRepo.update(id, dto);
-    if (!storage.affected) { throw new NotFoundException(`Storage with ID: ${id} not found`) }
-    return this.getStorageById(id); //return updated values
+      if(dto.section!==undefined){storage.section=dto.section;}
+      if(dto.shelf!==undefined){storage.shelf=dto.shelf;}
+      return this.storageRepo.save(storage);//return updated values
   }
 
   async deleteStorage(id: number): Promise<ResponseDto> {

@@ -14,16 +14,18 @@ import { User, UserRole } from '../users/entities/user.entity.js';
 import { CreateBookingDto } from './dto/create-booking.dto.js';
 import { UpdateBookingDto } from './dto/update-booking.dto.js';
 import { Booking } from './entities/booking.entity.js';
+import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
 export class BookingsService {
     constructor(
-        @InjectRepository(Booking)
-        private readonly bookingsRepo: Repository<Booking>,
+        @InjectRepository(Booking)//booking repository injection
+        private readonly bookingsRepo: Repository<Booking>,//works with the booking entity
         @InjectRepository(User)
         private readonly usersRepo: Repository<User>,
         @InjectRepository(Group)
         private readonly groupsRepo: Repository<Group>,
+        private readonly auditService: AuditService,//audit log service injection
     ) {}
 
     async create(dto: CreateBookingDto, actor: AuthUser) {
@@ -45,30 +47,44 @@ export class BookingsService {
             throw new ConflictException('This group already has a booking request');
         }
 
-        const insertResult = await this.bookingsRepo
-            .createQueryBuilder()
-            .insert()
-            .into(Booking)
-            .values({
-                title: dto.title,
-                group,
-                manager: null,
-                cancelAt: null,
-            })
-            .returning(['bookingId'])
-            .execute();
-        const bookingId = insertResult.identifiers[0]?.bookingId;
-        if (bookingId === undefined) {
-            throw new InternalServerErrorException('Booking was created but its ID was not returned');
-        }
+        // Create the booking and its audit record atomically.
+        const bookingId = await this.bookingsRepo.manager.transaction(async (manager) => {
+            const insertResult = await manager
+                .getRepository(Booking)
+                .createQueryBuilder()
+                .insert()
+                .into(Booking)
+                .values({
+                    title: dto.title,
+                    group,
+                    manager: null,
+                    cancelAt: null,
+                })
+                .returning(['bookingId'])
+                .execute();
+            const insertedBookingId = insertResult.identifiers[0]?.bookingId;
+            if (insertedBookingId === undefined) {
+                throw new InternalServerErrorException('Booking ID was not returned');
+            }
 
-        const savedBooking = await this.findBooking(Number(bookingId));
+            await this.auditService.logAction(
+                manager,
+                'CREATE_BOOKING',
+                actor.userId,
+                String(insertedBookingId),
+                { title: dto.title, groupName: group.name },
+                undefined,
+            );
+            return Number(insertedBookingId);
+        });
+        const savedBooking = await this.findBooking(bookingId);
         return {
             message: 'Booking request created successfully',
             data: this.toResponse(savedBooking),
         };
     }
 
+    //find all user bookings, if user is admin return all bookings
     async findAll(actor: AuthUser) {
         const query = this.bookingQuery().orderBy('booking.createdAt', 'DESC');
 
@@ -87,6 +103,7 @@ export class BookingsService {
         };
     }
 
+    //find a single booking by its ID, ensuring the actor has permission to view it(student,admin)
     async findOne(bookingId: number, actor: AuthUser) {
         const booking = await this.findBooking(bookingId);
         this.ensureCanView(booking, actor);
@@ -96,19 +113,32 @@ export class BookingsService {
         };
     }
 
+    //updaet title of a booking,(student,admin)
     async update(bookingId: number, dto: UpdateBookingDto, actor: AuthUser) {
         const booking = await this.findBooking(bookingId);
         this.ensureCanManage(booking, actor);
         this.ensureNotCancelled(booking);
 
-        if (dto.title !== undefined) {
-            await this.bookingsRepo
-                .createQueryBuilder()
-                .update(Booking)
-                .set({ title: dto.title })
-                .where('"bookingId" = :bookingId', { bookingId })
-                .execute();
-        }
+        // Keep the booking update and audit record atomic.
+        await this.bookingsRepo.manager.transaction(async (manager) => {
+            if (dto.title !== undefined) {
+                await manager
+                    .getRepository(Booking)
+                    .createQueryBuilder()
+                    .update(Booking)
+                    .set({ title: dto.title })
+                    .where('"bookingId" = :bookingId', { bookingId })
+                    .execute();
+            }
+            await this.auditService.logAction(
+                manager,
+                'UPDATE_BOOKING',
+                actor.userId,
+                bookingId.toString(),
+                { oldTitle: booking.title, newTitle: dto.title },
+                { updatedAt: new Date() },
+            );
+        });
         const updatedBooking = await this.findBooking(bookingId);
         return {
             message: 'Booking updated successfully',
@@ -121,12 +151,25 @@ export class BookingsService {
         this.ensureCanManage(booking, actor);
         this.ensureNotCancelled(booking);
 
-        await this.bookingsRepo
-            .createQueryBuilder()
-            .update(Booking)
-            .set({ cancelAt: new Date() })
-            .where('"bookingId" = :bookingId', { bookingId })
-            .execute();
+        // Keep the cancellation and audit record atomic.
+        const cancelAt = new Date();
+        await this.bookingsRepo.manager.transaction(async (manager) => {
+            await manager
+                .getRepository(Booking)
+                .createQueryBuilder()
+                .update(Booking)
+                .set({ cancelAt })
+                .where('"bookingId" = :bookingId', { bookingId })
+                .execute();
+            await this.auditService.logAction(
+                manager,
+                'CANCEL_BOOKING',
+                actor.userId,
+                bookingId.toString(),
+                { title: booking.title, groupName: booking.groupName },
+                { cancelAt },
+            );
+        });
         const cancelledBooking = await this.findBooking(bookingId);
         return {
             message: 'Booking cancelled successfully',
@@ -155,12 +198,24 @@ export class BookingsService {
             throw new ForbiddenException('An active MANAGER account is required to approve bookings');
         }
 
-        await this.bookingsRepo
-            .createQueryBuilder()
-            .update(Booking)
-            .set({ userId: manager.userId })
-            .where('"bookingId" = :bookingId', { bookingId })
-            .execute();
+        // Keep the approval and audit record atomic.
+        await this.bookingsRepo.manager.transaction(async (transactionManager) => {
+            await transactionManager
+                .getRepository(Booking)
+                .createQueryBuilder()
+                .update(Booking)
+                .set({ userId: manager.userId })
+                .where('"bookingId" = :bookingId', { bookingId })
+                .execute();
+            await this.auditService.logAction(
+                transactionManager,
+                'APPROVE_BOOKING',
+                actor.userId,
+                bookingId.toString(),
+                { title: booking.title, approvedBy: actor.userId },
+                { approvedAt: new Date() },
+            );
+        });
         const approvedBooking = await this.findBooking(bookingId);
         return {
             message: 'Booking approved successfully',
